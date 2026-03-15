@@ -4,28 +4,32 @@ import { useEffect, useState } from "react";
 function UploadPage() {
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
-  const [status, setStatus] = useState("AWAITING_INPUT");
+  const [status, setStatus] = useState("SYSTEM_READY");
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
-  // Inline Style Objects
+  // Responsive Check for Inline Logic
+  const isMobile = window.innerWidth < 768;
+
   const styles = {
     container: {
       minHeight: '100vh',
       backgroundColor: '#05060f',
-      padding: '40px',
+      padding: 'clamp(10px, 4vw, 40px)',
       color: '#00f2ff',
-      fontFamily: "'Segoe UI', Roboto, sans-serif"
+      fontFamily: "'Segoe UI', Roboto, sans-serif",
     },
     header: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '30px',
       borderBottom: '1px solid rgba(0, 242, 255, 0.2)',
-      paddingBottom: '15px'
+      paddingBottom: '20px',
+      marginBottom: '30px',
+      flexWrap: 'wrap',
+      gap: '10px'
     },
     title: {
-      fontSize: '28px',
+      fontSize: 'clamp(1.2rem, 5vw, 2rem)',
       fontWeight: '900',
       letterSpacing: '2px',
       margin: 0,
@@ -33,17 +37,18 @@ function UploadPage() {
       WebkitBackgroundClip: 'text',
       WebkitTextFillColor: 'transparent'
     },
-    grid: {
-      display: 'grid',
-      gridTemplateColumns: 'minmax(300px, 1fr) 3fr',
+    layout: {
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
       gap: '30px'
     },
     sidebar: {
+      flex: isMobile ? '1' : '0 0 320px',
       background: 'rgba(255, 255, 255, 0.05)',
       backdropFilter: 'blur(12px)',
       border: '1px solid rgba(255, 255, 255, 0.1)',
       borderRadius: '20px',
-      padding: '25px',
+      padding: '20px',
       height: 'fit-content'
     },
     logBox: {
@@ -51,55 +56,46 @@ function UploadPage() {
       padding: '15px',
       borderRadius: '8px',
       fontFamily: 'monospace',
-      fontSize: '12px',
+      fontSize: '11px',
       marginBottom: '20px',
-      borderLeft: '2px solid #00f2ff'
+      borderLeft: '3px solid #7000ff',
+      lineHeight: '1.6'
+    },
+    mainContent: {
+      flex: 1
     },
     resultGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-      gap: '20px',
-      padding: '10px'
+      gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+      gap: '20px'
     },
-    card: {
-      border: '1px solid rgba(0, 242, 255, 0.3)',
-      background: 'rgba(5, 6, 15, 0.9)',
+    previewCard: {
+      background: 'rgba(5, 6, 15, 0.8)',
+      border: '1px solid rgba(0, 242, 255, 0.2)',
       borderRadius: '12px',
-      padding: '12px',
+      padding: '10px',
       textAlign: 'center',
-      position: 'relative',
-      overflow: 'hidden'
+      transition: '0.3s'
     },
-    img: {
+    image: {
       width: '100%',
-      height: '150px',
+      height: '140px',
       objectFit: 'cover',
       borderRadius: '8px',
-      marginBottom: '10px',
-      border: '1px solid rgba(255, 255, 255, 0.1)'
-    },
-    neonBtn: {
-      width: '100%',
-      padding: '14px',
-      background: 'transparent',
-      color: '#00f2ff',
-      border: '1px solid #00f2ff',
-      borderRadius: '4px',
-      fontWeight: 'bold',
-      cursor: 'pointer',
-      textTransform: 'uppercase',
-      transition: '0.3s'
+      border: '1px solid rgba(255,255,255,0.1)'
     },
     commitBtn: {
       width: '100%',
-      padding: '14px',
+      padding: '15px',
       background: 'linear-gradient(90deg, #00f2ff, #7000ff)',
       color: '#fff',
       border: 'none',
-      borderRadius: '4px',
-      fontWeight: 'bold',
+      borderRadius: '8px',
+      fontWeight: '900',
       cursor: 'pointer',
-      boxShadow: '0 0 15px rgba(0, 242, 255, 0.4)'
+      boxShadow: '0 0 20px rgba(0, 242, 255, 0.3)',
+      textTransform: 'uppercase',
+      marginTop: '10px'
     }
   };
 
@@ -122,70 +118,100 @@ function UploadPage() {
   };
 
   const uploadBatch = async () => {
-    setStatus("PROCESSING");
-    let success = 0;
+    setStatus("UPLOADING...");
+    let successCount = 0;
+
     for (let i = 0; i < files.length; i++) {
       setProgress({ current: i + 1, total: files.length });
+      
       const img = await faceapi.bufferToImage(files[i]);
-      const detections = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+      const detections = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
 
       if (detections) {
         const formData = new FormData();
         formData.append("image", files[i]);
         formData.append("descriptor", JSON.stringify(Array.from(detections.descriptor)));
-        await fetch("https://facefinder-server.onrender.com/api/upload", { method: "POST", body: formData });
-        success++;
+
+        try {
+          await fetch("https://facefinder-server.onrender.com/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+          successCount++;
+        } catch (e) { console.error("Upload error", e); }
       }
     }
     setStatus("UPLOAD_COMPLETE");
-    alert(`Done: ${success} images added to neural database.`);
+    alert(`Protocol finished. ${successCount} entries committed to database.`);
   };
 
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.title}>NEURAL UPLOAD v3.1</h1>
-        <div style={{ fontSize: '12px', fontFamily: 'monospace' }}>
-          STATUS: <span style={{ color: '#00ff88' }}>{status}</span>
+        <h1 style={styles.title}>BATCH_UPLOAD_V3</h1>
+        <div style={{ fontSize: '11px', fontFamily: 'monospace', letterSpacing: '1px' }}>
+          <span style={{ color: '#00ff88' }}>●</span> {status}
         </div>
       </header>
 
-      <div style={styles.grid}>
+      <div style={styles.layout}>
+        {/* CONTROL SIDEBAR */}
         <aside style={styles.sidebar}>
           <div style={styles.logBox}>
-            <p style={{ margin: '5px 0' }}>{">"} SESSION_START: {new Date().toLocaleTimeString()}</p>
-            <p style={{ margin: '5px 0' }}>{">"} BATCH: {files.length} ITEMS</p>
-            <p style={{ margin: '5px 0', color: '#00f2ff' }}>{">"} PROGRESS: {progress.current}/{progress.total}</p>
+            <div>{">"} NETWORK: SECURE_UPLINK</div>
+            <div>{">"} BATCH_SIZE: {files.length}</div>
+            <div style={{ color: '#00ff88' }}>{">"} PROGRESS: {progress.current}/{progress.total}</div>
           </div>
 
-          <label style={{ display: 'block', fontSize: '10px', marginBottom: '10px', opacity: 0.7 }}>SOURCE SELECTION</label>
-          <input type="file" multiple onChange={handleFileChange} style={{ marginBottom: '20px', width: '100%' }} />
-          
+          <label style={{ fontSize: '10px', opacity: 0.6, display: 'block', marginBottom: '8px' }}>LOAD BIOMETRIC SOURCE</label>
+          <input 
+            type="file" 
+            multiple 
+            onChange={handleFileChange} 
+            style={{ width: '100%', fontSize: '12px', marginBottom: '20px' }} 
+          />
+
           <button 
-            style={files.length > 0 ? styles.commitBtn : styles.neonBtn} 
+            style={styles.commitBtn} 
             onClick={uploadBatch}
-            disabled={files.length === 0 || status === "PROCESSING"}
+            disabled={files.length === 0 || status === "UPLOADING..."}
           >
-            {status === "PROCESSING" ? "ANALYZING..." : "COMMIT BATCH"}
+            {status === "UPLOADING..." ? "ANALYZING..." : "COMMIT TO DATABASE"}
           </button>
         </aside>
 
-        <main>
+        {/* PREVIEW AREA */}
+        <main style={styles.mainContent}>
           {previews.length > 0 ? (
             <div style={styles.resultGrid}>
               {previews.map((url, idx) => (
-                <div key={idx} style={styles.card}>
-                  <div style={{ fontSize: '9px', textAlign: 'left', marginBottom: '8px', opacity: 0.6 }}>IMG_REF_{idx}</div>
-                  <img src={url} alt="preview" style={styles.img} />
-                  <div style={{ fontSize: '10px', color: idx < progress.current ? '#00ff88' : '#666' }}>
-                    {idx < progress.current ? "● ENCRYPTED" : "○ PENDING"}
+                <div key={idx} style={styles.previewCard}>
+                  <div style={{ fontSize: '9px', opacity: 0.4, textAlign: 'left', marginBottom: '5px' }}>REF_{idx}</div>
+                  <img src={url} alt="preview" style={styles.image} />
+                  <div style={{ 
+                    marginTop: '10px', 
+                    fontSize: '10px', 
+                    color: idx < progress.current ? '#00ff88' : '#666' 
+                  }}>
+                    {idx < progress.current ? "✓ PROCESSED" : "○ PENDING"}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed rgba(0, 242, 255, 0.2)', borderRadius: '20px' }}>
-              <p style={{ opacity: 0.3, letterSpacing: '2px' }}>AWAITING SOURCE DATA...</p>
+            <div style={{ 
+              height: '300px', 
+              border: '1px dashed rgba(0, 242, 255, 0.2)', 
+              borderRadius: '20px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              opacity: 0.4
+            }}>
+              AWAITING BATCH DATA...
             </div>
           )}
         </main>
