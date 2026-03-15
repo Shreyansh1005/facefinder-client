@@ -5,13 +5,13 @@ function SearchFace() {
   const [image, setImage] = useState(null);
   const [matches, setMatches] = useState([]);
   const [status, setStatus] = useState("SYSTEM_READY");
-  const [platform, setPlatform] = useState(null); // 'ios' or 'android'
+  const [platform, setPlatform] = useState(null);
 
   const videoRef = useRef();
   const canvasRef = useRef();
   const resultsRef = useRef();
 
-  // ---------------- STYLES ----------------
+  // ---------------- STYLES (UNTOUCHED) ----------------
   const styles = {
     container: {
       minHeight: "100vh",
@@ -38,27 +38,12 @@ function SearchFace() {
     title: { fontSize: "1.2rem", margin: 0, fontWeight: "900", letterSpacing: "3px", textShadow: "0 0 10px rgba(0, 242, 255, 0.5)" },
     layout: { display: "flex", flexDirection: window.innerWidth < 1024 ? "column" : "row", gap: "20px", alignItems: "center" },
     sidebar: { width: "100%", maxWidth: "320px", background: "rgba(255, 255, 255, 0.03)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "20px", borderRadius: "15px" },
-    
-    // UPDATED FOR ALIGNMENT: Added boxSizing and display properties
     btn: { 
-      width: "100%", 
-      padding: "12px", 
-      marginBottom: "12px", 
-      border: "1px solid #00f2ff", 
-      background: "transparent", 
-      color: "#00f2ff", 
-      cursor: "pointer", 
-      fontWeight: "bold", 
-      textTransform: "uppercase", 
-      letterSpacing: "1px", 
-      fontSize: "11px", 
-      borderRadius: "4px", 
-      WebkitAppearance: "none",
-      boxSizing: "border-box", // Ensures padding doesn't push width past 100%
-      display: "inline-block", // Required for label alignment
-      textAlign: "center" 
+      width: "100%", padding: "12px", marginBottom: "12px", border: "1px solid #00f2ff", 
+      background: "transparent", color: "#00f2ff", cursor: "pointer", fontWeight: "bold", 
+      textTransform: "uppercase", letterSpacing: "1px", fontSize: "11px", borderRadius: "4px", 
+      WebkitAppearance: "none", boxSizing: "border-box", display: "inline-block", textAlign: "center" 
     },
-    
     scannerBox: { width: "100%", maxWidth: "480px", position: "relative", background: "linear-gradient(45deg, #00f2ff, #7000ff)", padding: "4px", borderRadius: "16px", margin: "0 auto", overflow: "hidden", WebkitMaskImage: "-webkit-radial-gradient(white, black)" },
     hudStatus: { position: "absolute", top: "15px", left: "15px", zIndex: 10, background: "rgba(0, 0, 0, 0.75)", padding: "6px 12px", borderRadius: "4px", borderLeft: "3px solid #00f2ff", fontSize: "11px", fontWeight: "bold", fontFamily: "monospace", pointerEvents: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.5)" },
     video: { width: "100%", maxHeight: "300px", objectFit: "cover", borderRadius: "10px", display: "block", background: "#000", WebkitTransform: "translateZ(0)" },
@@ -99,9 +84,7 @@ function SearchFace() {
       });
       videoRef.current.srcObject = stream;
       setStatus("LENS_ACTIVE");
-    } catch {
-      alert("Camera access failed.");
-    }
+    } catch { alert("Camera access failed."); }
   };
 
   const capture = async () => {
@@ -116,12 +99,18 @@ function SearchFace() {
     await autoFindFace(img);
   };
 
+  // UNIFIED HANDLER: Works for both platforms
   const handleImage = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setImage(url);
-    autoFindFace(url);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      setImage(dataUrl);
+      autoFindFace(dataUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
   const autoFindFace = async (imgSrc) => {
@@ -161,7 +150,6 @@ function SearchFace() {
   };
 
   // ---------------- RENDER ----------------
-
   if (!platform) {
     return (
       <div style={styles.selectionOverlay}>
@@ -180,7 +168,6 @@ function SearchFace() {
 
       <div style={styles.layout}>
         {platform === 'android' ? (
-          /* ANDROID VIEW: Live Camera Scanning */
           <div style={styles.scannerBox}>
             <div style={styles.hudStatus}>
                <span style={{ color: status === "MATCH_FOUND" || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e", marginRight: '8px' }}>●</span>
@@ -192,7 +179,6 @@ function SearchFace() {
             </div>
           </div>
         ) : (
-          /* IOS VIEW: Clean, futuristic upload zone */
           <div style={{width: '100%', textAlign: 'center'}}>
             <label style={styles.iosDropzone}>
               {image ? (
@@ -200,10 +186,10 @@ function SearchFace() {
               ) : (
                 <>
                   <div style={{fontSize: '30px', marginBottom: '10px'}}>+</div>
-                  <div style={{fontSize: '10px', letterSpacing: '2px'}}>INITIALIZE BIOMETRIC UPLOAD</div>
+                  <div style={{fontSize: '10px', letterSpacing: '2px'}}>TAP TO CAPTURE IMAGE</div>
                 </>
               )}
-              <input type="file" accept="image/*" onChange={handleImage} style={{display: 'none'}} />
+              <input type="file" accept="image/*" capture="user" onChange={handleImage} style={{display: 'none'}} />
             </label>
             <div style={{marginTop: '15px', fontSize: '10px', opacity: 0.5}}>[ {status} ]</div>
           </div>
@@ -220,17 +206,10 @@ function SearchFace() {
           
           <div style={{ marginTop: '10px' }}>
             <label style={styles.btn}>
-               {platform === 'ios' ? "SELECT DATA FILE" : "MANUAL UPLOAD"}
-               <input type="file" onChange={handleImage} style={{ display: 'none' }} />
+               {platform === 'ios' ? "CHOOSE FROM GALLERY" : "MANUAL UPLOAD"}
+               <input type="file" accept="image/*" onChange={handleImage} style={{ display: 'none' }} />
             </label>
           </div>
-
-          {image && platform === 'android' && (
-            <div style={styles.previewThumb}>
-              <img src={image} width="100%" alt="subject" style={{ borderRadius: '4px', border: '1px solid #00f2ff' }} />
-              <div style={{ fontSize: '8px', marginTop: '5px', opacity: 0.7 }}>CAPTURED_IMG</div>
-            </div>
-          )}
         </div>
       </div>
 
