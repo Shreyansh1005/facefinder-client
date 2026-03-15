@@ -20,7 +20,7 @@ function SearchFace() {
   // ---------------- STYLES ----------------
   const styles = {
     container: {
-      minHeight: "100vh",
+      // minHeight: "100vh",git
       minHeight: "-webkit-fill-available",
       background: "#05060f",
       padding: "calc(20px + env(safe-area-inset-top)) 20px 40px",
