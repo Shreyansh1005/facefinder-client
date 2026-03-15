@@ -8,129 +8,126 @@ function SearchFace() {
 
   const videoRef = useRef();
   const canvasRef = useRef();
-  const resultsRef = useRef();
+  const resultsRef = useRef(); // Ref for auto-scrolling
 
   // ---------------- RESPONSIVE INLINE STYLES ----------------
   const styles = {
     container: {
       minHeight: "100vh",
       background: "#05060f",
-      padding: "20px 15px",
+      padding: "clamp(15px, 5vw, 40px)",
       color: "#00f2ff",
       fontFamily: "'Segoe UI', Roboto, monospace",
       overflowX: "hidden"
     },
     header: {
-      textAlign: "center",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
       borderBottom: "1px solid rgba(0, 242, 255, 0.2)",
-      paddingBottom: "10px",
-      marginBottom: "20px"
+      paddingBottom: "15px",
+      marginBottom: "30px",
+      flexWrap: "wrap",
+      gap: "10px"
     },
     title: {
-      fontSize: "1.2rem",
+      fontSize: "clamp(1.2rem, 4vw, 2rem)",
       margin: 0,
       fontWeight: "900",
-      letterSpacing: "3px",
-      textShadow: "0 0 10px rgba(0, 242, 255, 0.5)"
+      letterSpacing: "2px",
+      textShadow: "0 0 15px rgba(0, 242, 255, 0.5)"
+    },
+    statusTag: {
+      fontSize: "12px",
+      fontFamily: "monospace",
+      background: "rgba(0, 242, 255, 0.1)",
+      padding: "5px 12px",
+      borderRadius: "20px",
+      border: "1px solid rgba(0, 242, 255, 0.3)"
     },
     layout: {
       display: "flex",
-      flexDirection: window.innerWidth < 1024 ? "column" : "row",
-      gap: "20px",
-      alignItems: "center",
-      justifyContent: "center"
+      // Changed: Mobile uses column-reverse so Video stays on top, Sidebar (buttons) on bottom
+      flexDirection: window.innerWidth < 1024 ? "column-reverse" : "row",
+      gap: "30px",
     },
     sidebar: {
-      width: "100%",
-      maxWidth: "320px",
+      flex: "0 0 280px",
       background: "rgba(255, 255, 255, 0.03)",
       backdropFilter: "blur(10px)",
       border: "1px solid rgba(255, 255, 255, 0.1)",
-      padding: "15px",
+      padding: "20px",
       borderRadius: "15px",
-      textAlign: "center"
+      height: "fit-content"
     },
     btn: {
       width: "100%",
-      padding: "12px",
-      marginBottom: "10px",
+      padding: "14px",
+      marginBottom: "12px",
       border: "1px solid #00f2ff",
       background: "transparent",
       color: "#00f2ff",
       cursor: "pointer",
       fontWeight: "bold",
-      fontSize: "11px",
       textTransform: "uppercase",
-      letterSpacing: "1px"
+      letterSpacing: "1px",
+      transition: "0.3s"
     },
     scannerBox: {
-      width: "100%",
-      maxWidth: "450px", // Reduced camera area
+      flex: 1,
       position: "relative",
       background: "linear-gradient(45deg, #00f2ff, #7000ff)",
-      padding: "3px",
-      borderRadius: "12px",
-      overflow: "hidden"
-    },
-    hudStatus: {
-      position: "absolute",
-      top: "10px",
-      left: "10px",
-      zIndex: 10,
-      background: "rgba(0, 0, 0, 0.7)",
-      padding: "5px 10px",
-      borderRadius: "4px",
-      borderLeft: "3px solid #00f2ff",
-      fontSize: "10px",
-      fontFamily: "monospace",
-      pointerEvents: "none",
-      textTransform: "uppercase"
+      padding: "6px",
+      borderRadius: "16px",
+      maxWidth: "640px",
+      margin: "0 auto",
+      width: "100%"
     },
     video: {
       width: "100%",
-      maxHeight: "300px", // Limits camera height on phone
-      objectFit: "cover",
       borderRadius: "10px",
       display: "block",
       background: "#000"
     },
     previewThumb: {
-      marginTop: "10px",
-      padding: "5px",
-      background: "rgba(0, 0, 0, 0.5)",
-      borderRadius: "8px",
-      border: "1px solid rgba(0, 242, 255, 0.3)",
-      width: "80px", // Smaller captured image
-      margin: "10px auto 0"
+      marginTop: "20px",
+      padding: "10px",
+      background: "rgba(0, 0, 0, 0.4)",
+      borderRadius: "12px",
+      border: "1px solid rgba(0, 242, 255, 0.2)",
+      textAlign: "center",
+      maxWidth: "150px", // Reduced size for mobile
+      margin: "20px auto 0"
     },
     resultGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-      gap: "15px",
-      marginTop: "20px"
+      gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+      gap: "25px",
+      marginTop: "30px"
     },
     card: {
       background: "rgba(255, 255, 255, 0.03)",
       border: "1px solid rgba(0, 242, 255, 0.2)",
-      borderRadius: "12px",
-      padding: "10px",
-      textAlign: "center"
+      borderRadius: "15px",
+      padding: "12px",
+      textAlign: "center",
+      transition: "0.3s"
     },
     downloadBtn: {
-      marginTop: "10px",
+      marginTop: "12px",
       width: "100%",
-      padding: "8px",
+      padding: "10px",
       background: "linear-gradient(90deg, #00f2ff, #7000ff)",
       color: "white",
       border: "none",
-      borderRadius: "4px",
+      borderRadius: "6px",
       cursor: "pointer",
       fontWeight: "bold",
-      fontSize: "10px"
+      fontSize: "12px"
     }
   };
 
-  // ---------------- LOGIC ----------------
+  // ---------------- LOGIC UPDATES ----------------
 
   useEffect(() => {
     const loadModels = async () => {
@@ -141,9 +138,11 @@ function SearchFace() {
     loadModels();
   }, []);
 
+  // NEW: Effect to hide preview image and scroll to results
   useEffect(() => {
     let timer;
     if (status === "NO_FACE" || status === "NO_MATCH") {
+      // Auto-disappear captured image after 3 seconds if no match
       timer = setTimeout(() => {
         setImage(null);
         setStatus("SYSTEM_READY");
@@ -151,6 +150,7 @@ function SearchFace() {
     }
 
     if (status === "MATCH_FOUND" && resultsRef.current) {
+      // Auto-scroll to results section
       resultsRef.current.scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -163,7 +163,7 @@ function SearchFace() {
       videoRef.current.srcObject = stream;
       setStatus("LENS_ACTIVE");
     } catch {
-      alert("Camera access denied");
+      alert("Camera denied");
     }
   };
 
@@ -212,7 +212,8 @@ function SearchFace() {
         setMatches(found);
         setStatus(found.length > 0 ? "MATCH_FOUND" : "NO_MATCH");
       } catch (err) {
-        setStatus("SERVER_ERROR");
+        console.error("API Error", err);
+        setStatus("ERROR");
       }
     };
   };
@@ -233,50 +234,54 @@ function SearchFace() {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h2 style={styles.title}>BIOMETRIC_SCAN_v3</h2>
+        <h2 style={styles.title}>AI_TERMINAL v3</h2>
+        <div style={styles.statusTag}>
+          <span style={{ color: status === "MATCH_FOUND" || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e", marginRight: '8px' }}>●</span>
+          {status}
+        </div>
       </header>
 
       <div style={styles.layout}>
-        {/* SCANNER VIEW */}
-        <div style={styles.scannerBox}>
-          {/* Status integrated near camera */}
-          <div style={styles.hudStatus}>
-             <span style={{ color: status === "MATCH_FOUND" || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e", marginRight: '5px' }}>●</span>
-             {status}
-          </div>
-          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px' }}>
-            <video ref={videoRef} autoPlay playsInline style={styles.video} />
-            <div className="scanLine" style={{ position: 'absolute', width: '100%', height: '2px', background: '#00f2ff', top: 0, boxShadow: '0 0 15px #00f2ff', animation: 'scan 2.5s linear infinite' }}></div>
-          </div>
-        </div>
-
-        {/* SIDEBAR / CONTROLS */}
+        {/* SIDEBAR (Now appears below camera on mobile) */}
         <div style={styles.sidebar}>
+          <div style={{ marginBottom: '20px', fontSize: '11px', opacity: 0.5, letterSpacing: '1px' }}>CONTROLS</div>
           <button onClick={startCamera} style={styles.btn}>ACTIVATE LENS</button>
-          <button onClick={capture} style={{ ...styles.btn, background: '#00f2ff', color: '#000' }}>IDENTIFY SUBJECT</button>
+          <button onClick={capture} style={{ ...styles.btn, background: '#00f2ff', color: '#000' }}>FREEZE FRAME</button>
           
-          <div style={{ marginTop: '10px' }}>
-            <input type="file" onChange={handleImage} style={{ fontSize: '10px', color: '#00f2ff', width: '100%' }} />
+          <div style={{ marginTop: '20px' }}>
+            <label style={{ fontSize: '10px', display: 'block', marginBottom: '8px', opacity: 0.6 }}>MANUAL_UPLOAD</label>
+            <input type="file" onChange={handleImage} style={{ fontSize: '12px', color: '#00f2ff', width: '100%' }} />
           </div>
 
+          {/* Captured Image Preview: Disappears on "No Match" via useEffect */}
           {image && (
             <div style={styles.previewThumb}>
-              <img src={image} width="100%" alt="subject" style={{ borderRadius: '4px' }} />
+              <div style={{ fontSize: '9px', marginBottom: '5px', opacity: 0.5 }}>CAPTURED</div>
+              <img src={image} width="100%" alt="subject" style={{ borderRadius: '8px', border: '1px solid #00f2ff' }} />
             </div>
           )}
+        </div>
+
+        {/* SCANNER VIEW (Always on top for mobile) */}
+        <div style={styles.scannerBox}>
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px' }}>
+            <video ref={videoRef} autoPlay playsInline style={styles.video} />
+            <div className="scanLine" style={{ position: 'absolute', width: '100%', height: '2px', background: '#00f2ff', top: 0, boxShadow: '0 0 15px #00f2ff', animation: 'scan 3s linear infinite' }}></div>
+          </div>
         </div>
       </div>
 
       {/* RESULTS PANEL */}
       {matches.length > 0 && (
-        <div ref={resultsRef} style={{ marginTop: '40px', borderTop: '1px solid rgba(0,242,255,0.2)', paddingTop: '20px' }}>
-          <h3 style={{ letterSpacing: '2px', fontSize: '14px', textAlign: 'center', marginBottom: '20px' }}>IDENTIFIED_MATCHES</h3>
+        <div ref={resultsRef} style={{ marginTop: '50px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px' }}>
+          <h3 style={{ letterSpacing: '4px', fontSize: '16px', textAlign: 'center', marginBottom: '30px' }}>IDENTIFIED_MATCHES</h3>
           <div style={styles.resultGrid}>
             {matches.map((m, i) => (
               <div key={i} style={styles.card}>
-                <img src={m} width="100%" alt="match" style={{ height: '150px', objectFit: 'cover', borderRadius: '8px' }} />
+                <div style={{ fontSize: '10px', textAlign: 'left', marginBottom: '8px', opacity: 0.4 }}>REF_0{i + 1}</div>
+                <img src={m} width="100%" alt="match" style={{ height: '200px', objectFit: 'cover', borderRadius: '10px' }} />
                 <button style={styles.downloadBtn} onClick={() => downloadImage(m, i)}>
-                  DOWNLOAD_DATA
+                  DOWNLOAD_BIOMETRIC_DATA
                 </button>
               </div>
             ))}
