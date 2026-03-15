@@ -14,12 +14,35 @@ function SearchFace() {
   // ---------------- STYLES ----------------
 
   const styles = {
+
     container: {
       minHeight: "100vh",
       background: "#05060f",
-      padding: "20px",
+      padding: "30px",
       color: "#00f2ff",
       fontFamily: "monospace"
+    },
+
+    header: {
+      display: "flex",
+      justifyContent: "space-between",
+      borderBottom: "1px solid #00f2ff44",
+      paddingBottom: "10px",
+      marginBottom: "20px"
+    },
+
+    layout: {
+      display: "flex",
+      gap: "20px",
+      flexWrap: "wrap"
+    },
+
+    sidebar: {
+      width: "260px",
+      border: "1px solid #00f2ff44",
+      padding: "15px",
+      borderRadius: "10px",
+      background: "#0a0b1a"
     },
 
     btn: {
@@ -29,13 +52,39 @@ function SearchFace() {
       border: "1px solid #00f2ff",
       background: "transparent",
       color: "#00f2ff",
-      cursor: "pointer"
+      cursor: "pointer",
+      fontWeight: "bold"
+    },
+
+    scannerBox: {
+      border: "2px solid #00f2ff",
+      borderRadius: "10px",
+      padding: "10px",
+      boxShadow: "0 0 20px #00f2ff55"
+    },
+
+    resultGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))",
+      gap: "15px",
+      marginTop: "20px"
     },
 
     card: {
-      border: "1px solid #00f2ff",
+      border: "1px solid #00f2ff44",
+      borderRadius: "10px",
       padding: "10px",
-      borderRadius: "10px"
+      background: "#0a0b1a"
+    },
+
+    downloadBtn: {
+      marginTop: "10px",
+      width: "100%",
+      border: "1px solid #00f2ff",
+      background: "transparent",
+      color: "#00f2ff",
+      cursor: "pointer",
+      padding: "6px"
     }
 
   };
@@ -50,8 +99,6 @@ function SearchFace() {
       await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
       await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
       await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
-
-      console.log("MODELS LOADED");
 
     };
 
@@ -205,7 +252,7 @@ function SearchFace() {
   };
 
 
-  // ---------------- DOWNLOAD FIX ----------------
+  // ---------------- DOWNLOAD ----------------
 
   const downloadImage = async (url, i) => {
 
@@ -243,98 +290,118 @@ function SearchFace() {
 
     <div style={styles.container}>
 
-      <h2>AI FACE TEST</h2>
 
-      <p>Status: {status}</p>
+      <div style={styles.header}>
 
+        <h2>AI_TERMINAL v3</h2>
 
-      <button
-        onClick={startCamera}
-        style={styles.btn}
-      >
-        ACTIVATE
-      </button>
+        <div>Status: {status}</div>
+
+      </div>
 
 
-      <button
-        onClick={capture}
-        style={styles.btn}
-      >
-        FREEZE
-      </button>
+      <div style={styles.layout}>
 
 
-      <input
-        type="file"
-        onChange={handleImage}
-      />
+        {/* SIDEBAR */}
 
+        <div style={styles.sidebar}>
 
-      <br /><br />
+          <button
+            onClick={startCamera}
+            style={styles.btn}
+          >
+            ACTIVATE LENS
+          </button>
 
+          <button
+            onClick={capture}
+            style={styles.btn}
+          >
+            FREEZE FRAME
+          </button>
 
-      <video
-        ref={videoRef}
-        autoPlay
-        width="400"
-      />
-
-
-      <canvas
-        ref={canvasRef}
-        style={{ display: "none" }}
-      />
-
-
-      {image && (
-
-        <div>
-
-          <p>CAPTURE</p>
-
-          <img
-            src={image}
-            width="150"
-            alt=""
+          <input
+            type="file"
+            onChange={handleImage}
           />
 
         </div>
 
-      )}
 
+        {/* CAMERA */}
+
+        <div style={styles.scannerBox}>
+
+          <video
+            ref={videoRef}
+            autoPlay
+            width="420"
+          />
+
+          <canvas
+            ref={canvasRef}
+            style={{ display: "none" }}
+          />
+
+          {image && (
+
+            <div>
+
+              <p>LAST CAPTURE</p>
+
+              <img
+                src={image}
+                width="150"
+                alt=""
+              />
+
+            </div>
+
+          )}
+
+        </div>
+
+      </div>
+
+
+      {/* RESULTS */}
 
       {matches.length > 0 && (
 
         <div>
 
-          <h3>MATCHES</h3>
+          <h3>IDENTIFIED MATCHES</h3>
 
-          {matches.map((m, i) => (
+          <div style={styles.resultGrid}>
 
-            <div
-              key={i}
-              style={styles.card}
-            >
+            {matches.map((m, i) => (
 
-              <img
-                src={m}
-                width="200"
-                alt=""
-              />
-
-              <br />
-
-              <button
-                onClick={() =>
-                  downloadImage(m, i)
-                }
+              <div
+                key={i}
+                style={styles.card}
               >
-                DOWNLOAD
-              </button>
 
-            </div>
+                <img
+                  src={m}
+                  width="100%"
+                  alt=""
+                />
 
-          ))}
+                <button
+                  style={styles.downloadBtn}
+                  onClick={() =>
+                    downloadImage(m, i)
+                  }
+                >
+                  DOWNLOAD
+                </button>
+
+              </div>
+
+            ))}
+
+          </div>
 
         </div>
 
