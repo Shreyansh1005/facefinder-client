@@ -596,3 +596,201 @@ body {
 .download-main-btn .icon {
   margin-right: 8px;
 } */
+
+/* ============================= */
+/* RESPONSIVE DESIGN */
+/* ============================= */
+
+/* ---------- Tablet ---------- */
+
+@media (max-width: 1024px) {
+
+  .main-content {
+    padding: 20px;
+  }
+
+  .heroBox {
+    padding: 40px 20px;
+    max-width: 90%;
+  }
+
+  .title {
+    font-size: 42px;
+  }
+
+  .subtitle {
+    font-size: 16px;
+  }
+
+  .btnGroup {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
+  .terminal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .terminal-sidebar {
+    order: 2;
+  }
+
+  .main-scanner {
+    order: 1;
+  }
+
+  .camera-wrapper {
+    width: 100%;
+  }
+
+  .preview-glow {
+    width: 150px;
+  }
+
+}
+
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 600px) {
+
+  .startContainer {
+    padding: 10px;
+  }
+
+  .heroBox {
+    padding: 25px 15px;
+    border-radius: 15px;
+  }
+
+  .title {
+    font-size: 30px;
+    letter-spacing: 0;
+  }
+
+  .subtitle {
+    font-size: 14px;
+  }
+
+  .system-tag {
+    letter-spacing: 3px;
+    font-size: 10px;
+  }
+
+  .btnGroup {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .action-btn {
+    width: 100%;
+    height: 45px;
+    font-size: 12px !important;
+  }
+
+  .glass-card {
+    padding: 15px;
+  }
+
+  .scanTitle {
+    font-size: 1.6rem;
+    text-align: center;
+  }
+
+  .camera-wrapper {
+    width: 100%;
+    padding: 5px;
+  }
+
+  .cameraBox video {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .terminal-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .terminal-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .terminal-sidebar {
+    min-height: auto;
+  }
+
+  .log-section {
+    height: 120px;
+  }
+
+}
+
+
+/* ---------- Result Grid Mobile ---------- */
+
+@media (max-width: 700px) {
+
+  .resultGrid {
+
+    gap: 15px;
+
+    padding: 5px;
+
+  }
+
+  .confirmed-entry {
+
+    min-width: 200px;
+
+    max-width: 200px;
+
+    min-height: 340px;
+
+  }
+
+  .confirmed-entry img {
+
+    height: 160px;
+
+  }
+
+  .download-main-btn {
+
+    padding: 10px !important;
+
+    font-size: 11px !important;
+
+  }
+
+}
+
+
+/* ---------- Extra Small Phones ---------- */
+
+@media (max-width: 400px) {
+
+  .title {
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
+
+  .scanTitle {
+    font-size: 1.3rem;
+  }
+
+  .confirmed-entry {
+    min-width: 170px;
+    max-width: 170px;
+  }
+
+}
