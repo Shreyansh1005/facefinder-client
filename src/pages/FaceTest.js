@@ -186,6 +186,22 @@ function SearchFace() {
   };
 
 };
+const downloadImage = async (url, index) => {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `match_${index + 1}.png`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (err) {
+    alert("Download failed");
+  }
+};
 
   return (
     <div style={styles.container}>
@@ -239,7 +255,18 @@ function SearchFace() {
                 <img src={m} alt="match" style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
                   <span style={{ fontSize: '11px', color: '#00ff88', fontWeight: 'bold' }}>CONFIRMED</span>
-                  <a href={m} download style={{ color: '#00f2ff', textDecoration: 'none', fontSize: '12px' }}>DOWNLOAD</a>
+                  <button
+  onClick={() => downloadImage(m, i)}
+  style={{
+    color: '#00f2ff',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '12px'
+  }}
+>
+  DOWNLOAD
+</button>
                 </div>
               </div>
             ))}
