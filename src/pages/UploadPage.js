@@ -1,6 +1,5 @@
 import * as faceapi from "face-api.js";
 import { useEffect, useState } from "react";
-import "../futuristic.css";
 
 function UploadPage() {
   const [files, setFiles] = useState([]);
@@ -8,12 +7,107 @@ function UploadPage() {
   const [status, setStatus] = useState("AWAITING_INPUT");
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
+  // Inline Style Objects
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      backgroundColor: '#05060f',
+      padding: '40px',
+      color: '#00f2ff',
+      fontFamily: "'Segoe UI', Roboto, sans-serif"
+    },
+    header: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '30px',
+      borderBottom: '1px solid rgba(0, 242, 255, 0.2)',
+      paddingBottom: '15px'
+    },
+    title: {
+      fontSize: '28px',
+      fontWeight: '900',
+      letterSpacing: '2px',
+      margin: 0,
+      background: 'linear-gradient(to right, #fff, #00f2ff)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent'
+    },
+    grid: {
+      display: 'grid',
+      gridTemplateColumns: 'minmax(300px, 1fr) 3fr',
+      gap: '30px'
+    },
+    sidebar: {
+      background: 'rgba(255, 255, 255, 0.05)',
+      backdropFilter: 'blur(12px)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderRadius: '20px',
+      padding: '25px',
+      height: 'fit-content'
+    },
+    logBox: {
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+      padding: '15px',
+      borderRadius: '8px',
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      marginBottom: '20px',
+      borderLeft: '2px solid #00f2ff'
+    },
+    resultGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+      gap: '20px',
+      padding: '10px'
+    },
+    card: {
+      border: '1px solid rgba(0, 242, 255, 0.3)',
+      background: 'rgba(5, 6, 15, 0.9)',
+      borderRadius: '12px',
+      padding: '12px',
+      textAlign: 'center',
+      position: 'relative',
+      overflow: 'hidden'
+    },
+    img: {
+      width: '100%',
+      height: '150px',
+      objectFit: 'cover',
+      borderRadius: '8px',
+      marginBottom: '10px',
+      border: '1px solid rgba(255, 255, 255, 0.1)'
+    },
+    neonBtn: {
+      width: '100%',
+      padding: '14px',
+      background: 'transparent',
+      color: '#00f2ff',
+      border: '1px solid #00f2ff',
+      borderRadius: '4px',
+      fontWeight: 'bold',
+      cursor: 'pointer',
+      textTransform: 'uppercase',
+      transition: '0.3s'
+    },
+    commitBtn: {
+      width: '100%',
+      padding: '14px',
+      background: 'linear-gradient(90deg, #00f2ff, #7000ff)',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '4px',
+      fontWeight: 'bold',
+      cursor: 'pointer',
+      boxShadow: '0 0 15px rgba(0, 242, 255, 0.4)'
+    }
+  };
+
   useEffect(() => {
     const loadModels = async () => {
       await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
       await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
       await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
-      console.log("Models loaded");
       setStatus("SYSTEM_READY");
     };
     loadModels();
@@ -21,127 +115,80 @@ function UploadPage() {
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    if (selectedFiles.length === 0) return;
-
     setFiles(selectedFiles);
-    
-    // Create preview URLs for all selected images
-    const previewUrls = selectedFiles.map(file => URL.createObjectURL(file));
-    setPreviews(previewUrls);
-    
+    setPreviews(selectedFiles.map(file => URL.createObjectURL(file)));
     setStatus("BATCH_LOADED");
     setProgress({ current: 0, total: selectedFiles.length });
   };
 
   const uploadBatch = async () => {
-    setStatus("BATCH_PROCESSING_START");
-    let successCount = 0;
-
+    setStatus("PROCESSING");
+    let success = 0;
     for (let i = 0; i < files.length; i++) {
-      const file = files[i];
       setProgress({ current: i + 1, total: files.length });
-      setStatus(`ANALYZING_TARGET_${i + 1}`);
+      const img = await faceapi.bufferToImage(files[i]);
+      const detections = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
 
-      // 1. Create a temporary image element to run face-api on
-      const img = await faceapi.bufferToImage(file);
-
-      // 2. Detect Face
-      const detections = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      if (!detections) {
-        console.warn(`No face found in ${file.name}, skipping...`);
-        continue;
-      }
-
-      // 3. Prepare Data
-      const descriptor = Array.from(detections.descriptor);
-      const formData = new FormData();
-      formData.append("image", file);
-      formData.append("descriptor", JSON.stringify(descriptor));
-
-      // 4. Upload
-      try {
-        await fetch("https://facefinder-server.onrender.com/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-        successCount++;
-      } catch (err) {
-        console.error(`Upload failed for ${file.name}`, err);
+      if (detections) {
+        const formData = new FormData();
+        formData.append("image", files[i]);
+        formData.append("descriptor", JSON.stringify(Array.from(detections.descriptor)));
+        await fetch("https://facefinder-server.onrender.com/api/upload", { method: "POST", body: formData });
+        success++;
       }
     }
-
     setStatus("UPLOAD_COMPLETE");
-    alert(`Successfully processed ${successCount} of ${files.length} images.`);
+    alert(`Done: ${success} images added to neural database.`);
   };
 
   return (
-    <div className="scanContainer">
-      <div className="terminal-header">
-        <h1 className="scanTitle">BATCH DATABASE ENTRY</h1>
-        <div className="status-indicator">
-          <span className="dot" style={{ 
-            backgroundColor: status === "UPLOAD_COMPLETE" ? "#00ff88" : "var(--neon-cyan)" 
-          }}></span> 
-          {status} {progress.total > 0 && `(${progress.current}/${progress.total})`}
+    <div style={styles.container}>
+      <header style={styles.header}>
+        <h1 style={styles.title}>NEURAL UPLOAD v3.1</h1>
+        <div style={{ fontSize: '12px', fontFamily: 'monospace' }}>
+          STATUS: <span style={{ color: '#00ff88' }}>{status}</span>
         </div>
-      </div>
+      </header>
 
-      <div className="terminal-grid">
-        <div className="glass-card terminal-sidebar">
-          <div className="log-section">
-            <p className="log-text">{">"} UPLINK STATUS: {status}</p>
-            <p className="log-text">{">"} BATCH_SIZE: {files.length} ITEMS</p>
-            {progress.total > 0 && (
-              <p className="log-text cyan-text">
-                {">"} PROCESSING: {Math.round((progress.current / progress.total) * 100)}%
-              </p>
-            )}
+      <div style={styles.grid}>
+        <aside style={styles.sidebar}>
+          <div style={styles.logBox}>
+            <p style={{ margin: '5px 0' }}>{">"} SESSION_START: {new Date().toLocaleTimeString()}</p>
+            <p style={{ margin: '5px 0' }}>{">"} BATCH: {files.length} ITEMS</p>
+            <p style={{ margin: '5px 0', color: '#00f2ff' }}>{">"} PROGRESS: {progress.current}/{progress.total}</p>
           </div>
+
+          <label style={{ display: 'block', fontSize: '10px', marginBottom: '10px', opacity: 0.7 }}>SOURCE SELECTION</label>
+          <input type="file" multiple onChange={handleFileChange} style={{ marginBottom: '20px', width: '100%' }} />
           
-          <div className="control-group">
-            <label className="neon-label">SELECT MULTIPLE SOURCES</label>
-            <input
-              type="file"
-              multiple // ALLOWS MULTIPLE SELECTION
-              onChange={handleFileChange}
-              className="fileInput"
-              accept="image/*"
-              style={{ width: '100%', marginBottom: '20px' }}
-            />
-            
-            <button 
-              onClick={uploadBatch} 
-              className="neonBtn full-width"
-              disabled={files.length === 0 || status.includes("ANALYZING")}
-            >
-              COMMIT BATCH TO DATABASE
-            </button>
-          </div>
-        </div>
+          <button 
+            style={files.length > 0 ? styles.commitBtn : styles.neonBtn} 
+            onClick={uploadBatch}
+            disabled={files.length === 0 || status === "PROCESSING"}
+          >
+            {status === "PROCESSING" ? "ANALYZING..." : "COMMIT BATCH"}
+          </button>
+        </aside>
 
-        <div className="main-scanner">
+        <main>
           {previews.length > 0 ? (
-            <div className="resultGrid" style={{ overflowY: 'auto', maxHeight: '70vh' }}>
-              {previews.map((url, index) => (
-                <div key={index} className="confirmed-entry" style={{ minHeight: 'auto', height: '200px' }}>
-                  <div className="match-header">SOURCE_0{index + 1}</div>
-                  <img src={url} alt="preview" style={{ height: '120px', objectFit: 'cover' }} />
-                  <div className="match-status-tag" style={{ marginTop: '10px', fontSize: '8px' }}>
-                    {index + 1 <= progress.current ? "PROCESSED" : "PENDING"}
+            <div style={styles.resultGrid}>
+              {previews.map((url, idx) => (
+                <div key={idx} style={styles.card}>
+                  <div style={{ fontSize: '9px', textAlign: 'left', marginBottom: '8px', opacity: 0.6 }}>IMG_REF_{idx}</div>
+                  <img src={url} alt="preview" style={styles.img} />
+                  <div style={{ fontSize: '10px', color: idx < progress.current ? '#00ff88' : '#666' }}>
+                    {idx < progress.current ? "● ENCRYPTED" : "○ PENDING"}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="glass-card" style={{ height: '300px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed' }}>
-              <p style={{ opacity: 0.5 }}>AWAITING BATCH SOURCES...</p>
+            <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed rgba(0, 242, 255, 0.2)', borderRadius: '20px' }}>
+              <p style={{ opacity: 0.3, letterSpacing: '2px' }}>AWAITING SOURCE DATA...</p>
             </div>
           )}
-        </div>
+        </main>
       </div>
     </div>
   );
