@@ -102,47 +102,90 @@ function SearchFace() {
     }
   };
 
-  const capture = () => {
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    if (!video.videoWidth) return;
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    const imgData = canvas.toDataURL("image/png");
-    setImage(imgData);
-  };
+  const capture = async () => {
+  const canvas = canvasRef.current;
+  const video = videoRef.current;
+
+  if (!video.videoWidth) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  canvas.getContext("2d").drawImage(video, 0, 0);
+
+  const imgData = canvas.toDataURL("image/png");
+
+  setImage(imgData);
+
+  // 🔥 immediately detect after capture
+  await autoFindFace(imgData);
+};
 
   const handleImage = (e) => {
     const file = e.target.files[0];
     if (file) setImage(URL.createObjectURL(file));
   };
 
-  const autoFindFace = async () => {
-    setStatus("ANALYZING...");
-    const tempImg = new Image();
-    tempImg.src = image;
-    tempImg.onload = async () => {
-      const detections = await faceapi.detectSingleFace(tempImg, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-      
-      if (!detections) {
-        setStatus("NO_FACE_DETECTED");
-        return;
-      }
+  const autoFindFace = async (imgSrc) => {
 
-      const res = await fetch("https://facefinder-server.onrender.com/api/photos");
-      const photos = await res.json();
-      const found = photos.filter(p => {
+  setStatus("ANALYZING...");
+
+  const tempImg = new Image();
+  tempImg.src = imgSrc;
+
+  tempImg.onload = async () => {
+
+    const detections =
+      await faceapi
+        .detectSingleFace(
+          tempImg,
+          new faceapi.TinyFaceDetectorOptions()
+        )
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+    if (!detections) {
+      setStatus("NO_FACE_DETECTED");
+      setMatches([]);
+      return;
+    }
+
+    const res = await fetch(
+      "https://facefinder-server.onrender.com/api/photos"
+    );
+
+    const photos = await res.json();
+
+    const found = photos
+      .filter(p => {
+
         if (!p.descriptor) return false;
-        const dist = faceapi.euclideanDistance(detections.descriptor, new Float32Array(p.descriptor));
-        return dist < 0.5;
-      }).map(p => "https://facefinder-server.onrender.com/" + p.imagePath);
 
-      setMatches(found);
-      setStatus(found.length > 0 ? "MATCHES_IDENTIFIED" : "NO_MATCH_FOUND");
-    };
+        const dist =
+          faceapi.euclideanDistance(
+            detections.descriptor,
+            new Float32Array(p.descriptor)
+          );
+
+        return dist < 0.5;
+
+      })
+      .map(p =>
+        "https://facefinder-server.onrender.com/" +
+        p.imagePath
+      );
+
+    setMatches(found);
+
+    setStatus(
+      found.length > 0
+        ? "MATCHES_IDENTIFIED"
+        : "NO_MATCH_FOUND"
+    );
+
   };
+
+};
 
   return (
     <div style={styles.container}>
