@@ -135,7 +135,8 @@ function SearchFace() {
 
   useEffect(() => {
     const loadModels = async () => {
-      await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+      await faceapi.nets.ssdMobilenetv1.loadFromUri("/models");
+      // await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
       await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
       await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
     };
@@ -195,7 +196,7 @@ function SearchFace() {
     const img = new Image();
     img.src = imgSrc;
     img.onload = async () => {
-      const detect = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+      const detect = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
       
       if (!detect) {
         setStatus("NO_FACE");
@@ -208,8 +209,13 @@ function SearchFace() {
         const photos = await res.json();
         const found = photos.filter(p => {
           if (!p.descriptor) return false;
-          const dist = faceapi.euclideanDistance(detect.descriptor, new Float32Array(p.descriptor));
-          return dist < 0.5;
+         const dist =
+  faceapi.euclideanDistance(
+    detect.descriptor,
+    new Float32Array(p.descriptor)
+  );
+
+return dist < 0.45;
         }).map(p => "https://facefinder-server.onrender.com/" + p.imagePath);
 
         setMatches(found);
