@@ -8,6 +8,7 @@ function SearchFace() {
 
   const videoRef = useRef();
   const canvasRef = useRef();
+  const resultsRef = useRef(); // Ref for auto-scrolling
 
   // ---------------- RESPONSIVE INLINE STYLES ----------------
   const styles = {
@@ -46,7 +47,8 @@ function SearchFace() {
     },
     layout: {
       display: "flex",
-      flexDirection: window.innerWidth < 1024 ? "column" : "row",
+      // Changed: Mobile uses column-reverse so Video stays on top, Sidebar (buttons) on bottom
+      flexDirection: window.innerWidth < 1024 ? "column-reverse" : "row",
       gap: "30px",
     },
     sidebar: {
@@ -78,7 +80,8 @@ function SearchFace() {
       padding: "6px",
       borderRadius: "16px",
       maxWidth: "640px",
-      margin: "0 auto"
+      margin: "0 auto",
+      width: "100%"
     },
     video: {
       width: "100%",
@@ -88,11 +91,13 @@ function SearchFace() {
     },
     previewThumb: {
       marginTop: "20px",
-      padding: "15px",
+      padding: "10px",
       background: "rgba(0, 0, 0, 0.4)",
       borderRadius: "12px",
       border: "1px solid rgba(0, 242, 255, 0.2)",
-      textAlign: "center"
+      textAlign: "center",
+      maxWidth: "150px", // Reduced size for mobile
+      margin: "20px auto 0"
     },
     resultGrid: {
       display: "grid",
@@ -122,7 +127,7 @@ function SearchFace() {
     }
   };
 
-  // ---------------- FUNCTIONALITY (UNTOUCHED) ----------------
+  // ---------------- LOGIC UPDATES ----------------
 
   useEffect(() => {
     const loadModels = async () => {
@@ -133,9 +138,28 @@ function SearchFace() {
     loadModels();
   }, []);
 
+  // NEW: Effect to hide preview image and scroll to results
+  useEffect(() => {
+    let timer;
+    if (status === "NO_FACE" || status === "NO_MATCH") {
+      // Auto-disappear captured image after 3 seconds if no match
+      timer = setTimeout(() => {
+        setImage(null);
+        setStatus("SYSTEM_READY");
+      }, 3000);
+    }
+
+    if (status === "MATCH_FOUND" && resultsRef.current) {
+      // Auto-scroll to results section
+      resultsRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    return () => clearTimeout(timer);
+  }, [status]);
+
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       videoRef.current.srcObject = stream;
       setStatus("LENS_ACTIVE");
     } catch {
@@ -146,7 +170,7 @@ function SearchFace() {
   const capture = async () => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    if (!video.videoWidth) return;
+    if (!video || !video.videoWidth) return;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext("2d").drawImage(video, 0, 0);
@@ -169,21 +193,28 @@ function SearchFace() {
     img.src = imgSrc;
     img.onload = async () => {
       const detect = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+      
       if (!detect) {
         setStatus("NO_FACE");
         setMatches([]);
         return;
       }
-      const res = await fetch("https://facefinder-server.onrender.com/api/photos");
-      const photos = await res.json();
-      const found = photos.filter(p => {
-        if (!p.descriptor) return false;
-        const dist = faceapi.euclideanDistance(detect.descriptor, new Float32Array(p.descriptor));
-        return dist < 0.5;
-      }).map(p => "https://facefinder-server.onrender.com/" + p.imagePath);
 
-      setMatches(found);
-      setStatus(found.length > 0 ? "MATCH_FOUND" : "NO_MATCH");
+      try {
+        const res = await fetch("https://facefinder-server.onrender.com/api/photos");
+        const photos = await res.json();
+        const found = photos.filter(p => {
+          if (!p.descriptor) return false;
+          const dist = faceapi.euclideanDistance(detect.descriptor, new Float32Array(p.descriptor));
+          return dist < 0.5;
+        }).map(p => "https://facefinder-server.onrender.com/" + p.imagePath);
+
+        setMatches(found);
+        setStatus(found.length > 0 ? "MATCH_FOUND" : "NO_MATCH");
+      } catch (err) {
+        console.error("API Error", err);
+        setStatus("ERROR");
+      }
     };
   };
 
@@ -200,20 +231,18 @@ function SearchFace() {
     }
   };
 
-  // ---------------- UI RENDER ----------------
-
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <h2 style={styles.title}>AI_TERMINAL v3</h2>
         <div style={styles.statusTag}>
-          <span style={{ color: status.includes("MATCH") || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e", marginRight: '8px' }}>●</span>
+          <span style={{ color: status === "MATCH_FOUND" || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e", marginRight: '8px' }}>●</span>
           {status}
         </div>
       </header>
 
       <div style={styles.layout}>
-        {/* SIDEBAR */}
+        {/* SIDEBAR (Now appears below camera on mobile) */}
         <div style={styles.sidebar}>
           <div style={{ marginBottom: '20px', fontSize: '11px', opacity: 0.5, letterSpacing: '1px' }}>CONTROLS</div>
           <button onClick={startCamera} style={styles.btn}>ACTIVATE LENS</button>
@@ -221,21 +250,22 @@ function SearchFace() {
           
           <div style={{ marginTop: '20px' }}>
             <label style={{ fontSize: '10px', display: 'block', marginBottom: '8px', opacity: 0.6 }}>MANUAL_UPLOAD</label>
-            <input type="file" onChange={handleImage} style={{ fontSize: '12px', color: '#00f2ff' }} />
+            <input type="file" onChange={handleImage} style={{ fontSize: '12px', color: '#00f2ff', width: '100%' }} />
           </div>
 
+          {/* Captured Image Preview: Disappears on "No Match" via useEffect */}
           {image && (
             <div style={styles.previewThumb}>
-              <div style={{ fontSize: '9px', marginBottom: '10px', opacity: 0.5 }}>LAST_CAPTURE</div>
+              <div style={{ fontSize: '9px', marginBottom: '5px', opacity: 0.5 }}>CAPTURED</div>
               <img src={image} width="100%" alt="subject" style={{ borderRadius: '8px', border: '1px solid #00f2ff' }} />
             </div>
           )}
         </div>
 
-        {/* SCANNER VIEW */}
+        {/* SCANNER VIEW (Always on top for mobile) */}
         <div style={styles.scannerBox}>
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px' }}>
-            <video ref={videoRef} autoPlay style={styles.video} />
+            <video ref={videoRef} autoPlay playsInline style={styles.video} />
             <div className="scanLine" style={{ position: 'absolute', width: '100%', height: '2px', background: '#00f2ff', top: 0, boxShadow: '0 0 15px #00f2ff', animation: 'scan 3s linear infinite' }}></div>
           </div>
         </div>
@@ -243,7 +273,7 @@ function SearchFace() {
 
       {/* RESULTS PANEL */}
       {matches.length > 0 && (
-        <div style={{ marginTop: '50px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px' }}>
+        <div ref={resultsRef} style={{ marginTop: '50px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px' }}>
           <h3 style={{ letterSpacing: '4px', fontSize: '16px', textAlign: 'center', marginBottom: '30px' }}>IDENTIFIED_MATCHES</h3>
           <div style={styles.resultGrid}>
             {matches.map((m, i) => (
@@ -261,7 +291,6 @@ function SearchFace() {
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
       
-      {/* SCAN ANIMATION */}
       <style>{`
         @keyframes scan {
           0% { top: 0%; }
