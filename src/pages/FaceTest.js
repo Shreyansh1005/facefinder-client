@@ -165,9 +165,9 @@ function SearchFace() {
   if (!platform) {
     return (
       <div style={styles.selectionOverlay}>
-        <div style={{color: '#00f2ff', letterSpacing: '4px', fontSize: '12px', marginBottom: '10px'}}>SELECT ARCHITECTURE</div>
-        <button style={{...styles.btn, maxWidth: '250px'}} onClick={() => setPlatform('android')}>DROID_OS TERMINAL</button>
-        <button style={{...styles.btn, maxWidth: '250px'}} onClick={() => setPlatform('ios')}>APPLE_CORE PORTAL</button>
+        <div style={{color: '#00f2ff', letterSpacing: '4px', fontSize: '12px', marginBottom: '10px'}}>SELECT OS</div>
+        <button style={{...styles.btn, maxWidth: '250px'}} onClick={() => setPlatform('android')}>ANDROID USER</button>
+        <button style={{...styles.btn, maxWidth: '250px'}} onClick={() => setPlatform('ios')}>IOS USER</button>
       </div>
     );
   }
