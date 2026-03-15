@@ -14,7 +14,8 @@ function SearchFace() {
   const styles = {
     container: {
       // FIX: Use -webkit-fill-available for iOS height issues
-      minHeight: "100vh", 
+      // minHeight: "100vh",
+      minHeight: "-webkit-fill-available", 
       background: "#05060f",
       // FIX: Added padding-top to avoid the iOS notch
       padding: "calc(20px + env(safe-area-inset-top)) 15px env(safe-area-inset-bottom)",
