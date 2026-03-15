@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import "../futuristic.css";
 
 function UploadPage() {
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [status, setStatus] = useState("AWAITING_INPUT");
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
     const loadModels = async () => {
@@ -18,107 +19,126 @@ function UploadPage() {
     loadModels();
   }, []);
 
-  const handleFile = (e) => {
-    const f = e.target.files[0];
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setStatus("FILE_LOADED");
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length === 0) return;
+
+    setFiles(selectedFiles);
+    
+    // Create preview URLs for all selected images
+    const previewUrls = selectedFiles.map(file => URL.createObjectURL(file));
+    setPreviews(previewUrls);
+    
+    setStatus("BATCH_LOADED");
+    setProgress({ current: 0, total: selectedFiles.length });
   };
 
-  const uploadImage = async () => {
-    setStatus("ANALYZING_BIOMETRICS");
-    const img = document.getElementById("uploadImg");
+  const uploadBatch = async () => {
+    setStatus("BATCH_PROCESSING_START");
+    let successCount = 0;
 
-    const detections = await faceapi
-      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setProgress({ current: i + 1, total: files.length });
+      setStatus(`ANALYZING_TARGET_${i + 1}`);
 
-    if (!detections) {
-      alert("No face found");
-      setStatus("ERROR_NO_FACE");
-      return;
+      // 1. Create a temporary image element to run face-api on
+      const img = await faceapi.bufferToImage(file);
+
+      // 2. Detect Face
+      const detections = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detections) {
+        console.warn(`No face found in ${file.name}, skipping...`);
+        continue;
+      }
+
+      // 3. Prepare Data
+      const descriptor = Array.from(detections.descriptor);
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("descriptor", JSON.stringify(descriptor));
+
+      // 4. Upload
+      try {
+        await fetch("https://facefinder-server.onrender.com/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        successCount++;
+      } catch (err) {
+        console.error(`Upload failed for ${file.name}`, err);
+      }
     }
 
-    setStatus("ENCRYPTING_DESCRIPTOR");
-    const descriptor = Array.from(detections.descriptor);
-    const formData = new FormData();
-    formData.append("image", file);
-    formData.append("descriptor", JSON.stringify(descriptor));
-
-    setStatus("UPLOADING_TO_SERVER");
-    await fetch("https://facefinder-server.onrender.com/api/upload", {
-      method: "POST",
-      body: formData,
-    });
-
     setStatus("UPLOAD_COMPLETE");
-    alert("Uploaded with descriptor");
+    alert(`Successfully processed ${successCount} of ${files.length} images.`);
   };
 
   return (
     <div className="scanContainer">
-      {/* HEADER SECTION */}
       <div className="terminal-header">
-        <h1 className="scanTitle">DATABASE ENTRY v3.0</h1>
+        <h1 className="scanTitle">BATCH DATABASE ENTRY</h1>
         <div className="status-indicator">
-          <span className="dot" style={{ backgroundColor: status === "UPLOAD_COMPLETE" ? "#00ff88" : "var(--neon-cyan)" }}></span> 
-          {status}
+          <span className="dot" style={{ 
+            backgroundColor: status === "UPLOAD_COMPLETE" ? "#00ff88" : "var(--neon-cyan)" 
+          }}></span> 
+          {status} {progress.total > 0 && `(${progress.current}/${progress.total})`}
         </div>
       </div>
 
       <div className="terminal-grid">
-        {/* LEFT: DATA ENTRY & LOGS */}
         <div className="glass-card terminal-sidebar">
           <div className="log-section">
             <p className="log-text">{">"} UPLINK STATUS: {status}</p>
-            <p className="log-text">{">"} ENCRYPTION: AES-256 ACTIVE</p>
-            {file && <p className="log-text cyan-text">{">"} TARGET: {file.name.toUpperCase()}</p>}
-            {status === "UPLOAD_COMPLETE" && <p className="log-text" style={{color: '#00ff88'}}>{">"} SUCCESS: DATA PERSISTED.</p>}
+            <p className="log-text">{">"} BATCH_SIZE: {files.length} ITEMS</p>
+            {progress.total > 0 && (
+              <p className="log-text cyan-text">
+                {">"} PROCESSING: {Math.round((progress.current / progress.total) * 100)}%
+              </p>
+            )}
           </div>
           
           <div className="control-group">
-            <label className="neon-label">SELECT DATA SOURCE</label>
+            <label className="neon-label">SELECT MULTIPLE SOURCES</label>
             <input
               type="file"
-              onChange={handleFile}
+              multiple // ALLOWS MULTIPLE SELECTION
+              onChange={handleFileChange}
               className="fileInput"
+              accept="image/*"
               style={{ width: '100%', marginBottom: '20px' }}
             />
             
             <button 
-              onClick={uploadImage} 
+              onClick={uploadBatch} 
               className="neonBtn full-width"
-              disabled={!file}
+              disabled={files.length === 0 || status.includes("ANALYZING")}
             >
-              COMMIT TO DATABASE
+              COMMIT BATCH TO DATABASE
             </button>
           </div>
         </div>
 
-        {/* CENTER: DATA PREVIEW */}
         <div className="main-scanner">
-          {preview ? (
-            <div className="camera-wrapper central-glow">
-              <div className="cameraBox">
-                <img
-                  id="uploadImg"
-                  src={preview}
-                  crossOrigin="anonymous"
-                  style={{ width: '100%', maxWidth: '480px', display: 'block' }}
-                  alt="preview"
-                />
-                <div className="scanLine"></div>
-                <div className="hud-overlay">
-                  <div className="corner tl"></div><div className="corner tr"></div>
-                  <div className="corner bl"></div><div className="corner br"></div>
-                  <div className="scan-text-overlay">DATA_PREVIEW</div>
+          {previews.length > 0 ? (
+            <div className="resultGrid" style={{ overflowY: 'auto', maxHeight: '70vh' }}>
+              {previews.map((url, index) => (
+                <div key={index} className="confirmed-entry" style={{ minHeight: 'auto', height: '200px' }}>
+                  <div className="match-header">SOURCE_0{index + 1}</div>
+                  <img src={url} alt="preview" style={{ height: '120px', objectFit: 'cover' }} />
+                  <div className="match-status-tag" style={{ marginTop: '10px', fontSize: '8px' }}>
+                    {index + 1 <= progress.current ? "PROCESSED" : "PENDING"}
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           ) : (
-            <div className="glass-card" style={{ height: '300px', width: '480px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed' }}>
-              <p style={{ opacity: 0.5 }}>AWAITING SOURCE FILE...</p>
+            <div className="glass-card" style={{ height: '300px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed' }}>
+              <p style={{ opacity: 0.5 }}>AWAITING BATCH SOURCES...</p>
             </div>
           )}
         </div>
