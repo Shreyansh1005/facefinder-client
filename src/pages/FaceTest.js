@@ -13,12 +13,16 @@ function SearchFace() {
   // ---------------- RESPONSIVE INLINE STYLES ----------------
   const styles = {
     container: {
+      // FIX: Use -webkit-fill-available for iOS height issues
       minHeight: "100vh",
+      minHeight: "-webkit-fill-available", 
       background: "#05060f",
-      padding: "20px 15px",
+      // FIX: Added padding-top to avoid the iOS notch
+      padding: "calc(20px + env(safe-area-inset-top)) 15px env(safe-area-inset-bottom)",
       color: "#00f2ff",
       fontFamily: "'Segoe UI', Roboto, monospace",
-      overflowX: "hidden"
+      overflowX: "hidden",
+      WebkitFontSmoothing: "antialiased"
     },
     header: {
       textAlign: "center",
@@ -35,6 +39,7 @@ function SearchFace() {
     },
     layout: {
       display: "flex",
+      // Force column on mobile regardless of exact width for consistency
       flexDirection: window.innerWidth < 1024 ? "column" : "row",
       gap: "20px",
       alignItems: "center"
@@ -44,6 +49,7 @@ function SearchFace() {
       maxWidth: "320px",
       background: "rgba(255, 255, 255, 0.03)",
       backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)", // Required for iOS
       border: "1px solid rgba(255, 255, 255, 0.1)",
       padding: "20px",
       borderRadius: "15px",
@@ -59,17 +65,20 @@ function SearchFace() {
       fontWeight: "bold",
       textTransform: "uppercase",
       letterSpacing: "1px",
-      fontSize: "11px"
+      fontSize: "11px",
+      borderRadius: "4px", // Ensure consistent radius on iOS
+      WebkitAppearance: "none" // Remove iOS default button styling
     },
     scannerBox: {
       width: "100%",
-      maxWidth: "480px", // Reduced camera screen area
+      maxWidth: "480px",
       position: "relative",
       background: "linear-gradient(45deg, #00f2ff, #7000ff)",
       padding: "4px",
       borderRadius: "16px",
       margin: "0 auto",
-      overflow: "hidden"
+      overflow: "hidden",
+      WebkitMaskImage: "-webkit-radial-gradient(white, black)" // Fixes iOS border-radius overflow bug
     },
     hudStatus: {
       position: "absolute",
@@ -88,11 +97,13 @@ function SearchFace() {
     },
     video: {
       width: "100%",
-      maxHeight: "300px", // Reduced area for mobile
+      maxHeight: "300px",
       objectFit: "cover",
       borderRadius: "10px",
       display: "block",
-      background: "#000"
+      background: "#000",
+      // FIX: Prevents iOS from forcing full-screen video
+      WebkitTransform: "translateZ(0)" 
     },
     previewThumb: {
       marginTop: "15px",
@@ -101,12 +112,12 @@ function SearchFace() {
       borderRadius: "10px",
       border: "1px solid rgba(0, 242, 255, 0.2)",
       textAlign: "center",
-      maxWidth: "100px", // Smaller captured image
+      maxWidth: "100px",
       margin: "15px auto 0"
     },
     resultGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+      gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
       gap: "20px",
       marginTop: "30px"
     },
@@ -127,7 +138,8 @@ function SearchFace() {
       borderRadius: "6px",
       cursor: "pointer",
       fontWeight: "bold",
-      fontSize: "11px"
+      fontSize: "11px",
+      WebkitAppearance: "none"
     }
   };
 
@@ -136,7 +148,6 @@ function SearchFace() {
   useEffect(() => {
     const loadModels = async () => {
       await faceapi.nets.ssdMobilenetv1.loadFromUri("/models");
-      // await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
       await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
       await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
     };
@@ -146,28 +157,31 @@ function SearchFace() {
   useEffect(() => {
     let timer;
     if (status === "NO_FACE" || status === "NO_MATCH") {
-      // Auto-disappear captured image after 3 seconds if no match or face found
       timer = setTimeout(() => {
         setImage(null);
         setStatus("SYSTEM_READY");
       }, 3000);
     }
-
     if (status === "MATCH_FOUND" && resultsRef.current) {
-      // Auto-redirect (scroll) to identified images section
       resultsRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-
     return () => clearTimeout(timer);
   }, [status]);
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      // FIX: Added explicit constraints for iOS
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 } 
+        } 
+      });
       videoRef.current.srcObject = stream;
       setStatus("LENS_ACTIVE");
     } catch {
-      alert("Camera denied");
+      alert("Camera denied. On iPhone, ensure Safari is allowed camera access in Settings.");
     }
   };
 
@@ -183,12 +197,12 @@ function SearchFace() {
     await autoFindFace(img);
   };
 
-  const handleImage = async (e) => {
+  const handleImage = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
     setImage(url);
-    await autoFindFace(url);
+    autoFindFace(url);
   };
 
   const autoFindFace = async (imgSrc) => {
@@ -197,25 +211,18 @@ function SearchFace() {
     img.src = imgSrc;
     img.onload = async () => {
       const detect = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
-      
       if (!detect) {
         setStatus("NO_FACE");
         setMatches([]);
         return;
       }
-
       try {
         const res = await fetch("https://facefinder-server.onrender.com/api/photos");
         const photos = await res.json();
         const found = photos.filter(p => {
           if (!p.descriptor) return false;
-         const dist =
-  faceapi.euclideanDistance(
-    detect.descriptor,
-    new Float32Array(p.descriptor)
-  );
-
-return dist < 0.45;
+          const dist = faceapi.euclideanDistance(detect.descriptor, new Float32Array(p.descriptor));
+          return dist < 0.45;
         }).map(p => "https://facefinder-server.onrender.com/" + p.imagePath);
 
         setMatches(found);
@@ -246,27 +253,32 @@ return dist < 0.45;
       </header>
 
       <div style={styles.layout}>
-        {/* SCANNER VIEW (Always on top for mobile) */}
         <div style={styles.scannerBox}>
-          {/* Status HUD placed clearly inside camera area */}
           <div style={styles.hudStatus}>
              <span style={{ color: status === "MATCH_FOUND" || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e", marginRight: '8px' }}>●</span>
              {status}
           </div>
           
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px' }}>
-            <video ref={videoRef} autoPlay playsInline style={styles.video} />
+            {/* playsInline is CRITICAL for iPhone to keep video inside the box */}
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              style={styles.video} 
+            />
             <div className="scanLine" style={{ position: 'absolute', width: '100%', height: '2px', background: '#00f2ff', top: 0, boxShadow: '0 0 15px #00f2ff', animation: 'scan 3s linear infinite' }}></div>
           </div>
         </div>
 
-        {/* SIDEBAR (Controls appear below camera on mobile) */}
         <div style={styles.sidebar}>
           <div style={{ marginBottom: '15px', fontSize: '10px', opacity: 0.5, letterSpacing: '1px' }}>SYSTEM_CONTROLS</div>
           <button onClick={startCamera} style={styles.btn}>ACTIVATE LENS</button>
           <button onClick={capture} style={{ ...styles.btn, background: '#00f2ff', color: '#000' }}>IDENTIFY SUBJECT</button>
           
           <div style={{ marginTop: '10px' }}>
+            {/* Added style to file input for better iOS visibility */}
             <input type="file" onChange={handleImage} style={{ fontSize: '10px', color: '#00f2ff', width: '100%' }} />
           </div>
 
@@ -279,7 +291,6 @@ return dist < 0.45;
         </div>
       </div>
 
-      {/* RESULTS PANEL */}
       {matches.length > 0 && (
         <div ref={resultsRef} style={{ marginTop: '50px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px' }}>
           <h3 style={{ letterSpacing: '4px', fontSize: '16px', textAlign: 'center', marginBottom: '30px' }}>IDENTIFIED_MATCHES</h3>
@@ -304,6 +315,8 @@ return dist < 0.45;
           0% { top: 0%; }
           100% { top: 100%; }
         }
+        /* Prevents tap highlight gray box on iOS */
+        * { -webkit-tap-highlight-color: transparent; }
       `}</style>
     </div>
   );
