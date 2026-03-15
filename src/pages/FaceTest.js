@@ -10,7 +10,7 @@ function SearchFace() {
   const canvasRef = useRef();
   const resultsRef = useRef();
 
-  // ---------------- UPDATED STYLES ----------------
+  // ---------------- RESPONSIVE INLINE STYLES ----------------
   const styles = {
     container: {
       minHeight: "100vh",
@@ -24,29 +24,31 @@ function SearchFace() {
       textAlign: "center",
       borderBottom: "1px solid rgba(0, 242, 255, 0.2)",
       paddingBottom: "10px",
-      marginBottom: "20px",
+      marginBottom: "20px"
     },
     title: {
       fontSize: "1.2rem",
       margin: 0,
       fontWeight: "900",
-      letterSpacing: "4px",
+      letterSpacing: "3px",
       textShadow: "0 0 10px rgba(0, 242, 255, 0.5)"
     },
     layout: {
       display: "flex",
       flexDirection: window.innerWidth < 1024 ? "column" : "row",
       gap: "20px",
-      alignItems: "center"
+      alignItems: "center",
+      justifyContent: "center"
     },
     sidebar: {
       width: "100%",
-      maxWidth: "350px",
+      maxWidth: "320px",
       background: "rgba(255, 255, 255, 0.03)",
       backdropFilter: "blur(10px)",
       border: "1px solid rgba(255, 255, 255, 0.1)",
-      padding: "20px",
+      padding: "15px",
       borderRadius: "15px",
+      textAlign: "center"
     },
     btn: {
       width: "100%",
@@ -63,44 +65,43 @@ function SearchFace() {
     },
     scannerBox: {
       width: "100%",
-      maxWidth: "480px", // Reduced from 640px
+      maxWidth: "450px", // Reduced camera area
       position: "relative",
       background: "linear-gradient(45deg, #00f2ff, #7000ff)",
-      padding: "3px", // Thinner border
+      padding: "3px",
       borderRadius: "12px",
       overflow: "hidden"
     },
+    hudStatus: {
+      position: "absolute",
+      top: "10px",
+      left: "10px",
+      zIndex: 10,
+      background: "rgba(0, 0, 0, 0.7)",
+      padding: "5px 10px",
+      borderRadius: "4px",
+      borderLeft: "3px solid #00f2ff",
+      fontSize: "10px",
+      fontFamily: "monospace",
+      pointerEvents: "none",
+      textTransform: "uppercase"
+    },
     video: {
       width: "100%",
-      maxHeight: "300px", // Limits height on mobile
+      maxHeight: "300px", // Limits camera height on phone
       objectFit: "cover",
       borderRadius: "10px",
       display: "block",
       background: "#000"
     },
-    hudStatus: {
-      position: "absolute",
-      top: "15px",
-      left: "15px",
-      zIndex: 10,
-      background: "rgba(0, 0, 0, 0.7)",
-      padding: "4px 10px",
-      borderRadius: "4px",
-      borderLeft: "3px solid #00f2ff",
-      fontSize: "10px",
-      fontWeight: "bold",
-      letterSpacing: "1px",
-      pointerEvents: "none"
-    },
     previewThumb: {
-      marginTop: "15px",
-      padding: "8px",
-      background: "rgba(0, 0, 0, 0.6)",
+      marginTop: "10px",
+      padding: "5px",
+      background: "rgba(0, 0, 0, 0.5)",
       borderRadius: "8px",
       border: "1px solid rgba(0, 242, 255, 0.3)",
-      textAlign: "center",
-      width: "100px", // Small preview
-      margin: "15px auto 0"
+      width: "80px", // Smaller captured image
+      margin: "10px auto 0"
     },
     resultGrid: {
       display: "grid",
@@ -110,10 +111,22 @@ function SearchFace() {
     },
     card: {
       background: "rgba(255, 255, 255, 0.03)",
-      border: "1px solid rgba(0, 242, 255, 0.1)",
-      borderRadius: "10px",
+      border: "1px solid rgba(0, 242, 255, 0.2)",
+      borderRadius: "12px",
       padding: "10px",
       textAlign: "center"
+    },
+    downloadBtn: {
+      marginTop: "10px",
+      width: "100%",
+      padding: "8px",
+      background: "linear-gradient(90deg, #00f2ff, #7000ff)",
+      color: "white",
+      border: "none",
+      borderRadius: "4px",
+      cursor: "pointer",
+      fontWeight: "bold",
+      fontSize: "10px"
     }
   };
 
@@ -136,9 +149,11 @@ function SearchFace() {
         setStatus("SYSTEM_READY");
       }, 3000);
     }
+
     if (status === "MATCH_FOUND" && resultsRef.current) {
       resultsRef.current.scrollIntoView({ behavior: 'smooth' });
     }
+
     return () => clearTimeout(timer);
   }, [status]);
 
@@ -148,7 +163,7 @@ function SearchFace() {
       videoRef.current.srcObject = stream;
       setStatus("LENS_ACTIVE");
     } catch {
-      alert("Camera denied");
+      alert("Camera access denied");
     }
   };
 
@@ -178,11 +193,13 @@ function SearchFace() {
     img.src = imgSrc;
     img.onload = async () => {
       const detect = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+      
       if (!detect) {
         setStatus("NO_FACE");
         setMatches([]);
         return;
       }
+
       try {
         const res = await fetch("https://facefinder-server.onrender.com/api/photos");
         const photos = await res.json();
@@ -200,31 +217,46 @@ function SearchFace() {
     };
   };
 
+  const downloadImage = async (url, i) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `match_${i + 1}.jpg`;
+      link.click();
+    } catch {
+      window.open(url);
+    }
+  };
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h2 style={styles.title}>FACE_SCAN v3</h2>
+        <h2 style={styles.title}>BIOMETRIC_SCAN_v3</h2>
       </header>
 
       <div style={styles.layout}>
-        {/* SCANNER VIEW - Now containing the Status HUD */}
+        {/* SCANNER VIEW */}
         <div style={styles.scannerBox}>
+          {/* Status integrated near camera */}
           <div style={styles.hudStatus}>
-             <span style={{ color: status === "MATCH_FOUND" || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e" }}>●</span> {status}
+             <span style={{ color: status === "MATCH_FOUND" || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e", marginRight: '5px' }}>●</span>
+             {status}
           </div>
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px' }}>
             <video ref={videoRef} autoPlay playsInline style={styles.video} />
-            <div className="scanLine" style={{ position: 'absolute', width: '100%', height: '2px', background: '#00f2ff', top: 0, boxShadow: '0 0 15px #00f2ff', animation: 'scan 2s linear infinite' }}></div>
+            <div className="scanLine" style={{ position: 'absolute', width: '100%', height: '2px', background: '#00f2ff', top: 0, boxShadow: '0 0 15px #00f2ff', animation: 'scan 2.5s linear infinite' }}></div>
           </div>
         </div>
 
-        {/* CONTROLS */}
+        {/* SIDEBAR / CONTROLS */}
         <div style={styles.sidebar}>
-          <button onClick={startCamera} style={styles.btn}>START LENS</button>
-          <button onClick={capture} style={{ ...styles.btn, background: '#00f2ff', color: '#000' }}>IDENTIFY</button>
+          <button onClick={startCamera} style={styles.btn}>ACTIVATE LENS</button>
+          <button onClick={capture} style={{ ...styles.btn, background: '#00f2ff', color: '#000' }}>IDENTIFY SUBJECT</button>
           
           <div style={{ marginTop: '10px' }}>
-            <input type="file" onChange={handleImage} style={{ fontSize: '10px', color: '#00f2ff' }} />
+            <input type="file" onChange={handleImage} style={{ fontSize: '10px', color: '#00f2ff', width: '100%' }} />
           </div>
 
           {image && (
@@ -235,19 +267,16 @@ function SearchFace() {
         </div>
       </div>
 
-      {/* RESULTS */}
+      {/* RESULTS PANEL */}
       {matches.length > 0 && (
         <div ref={resultsRef} style={{ marginTop: '40px', borderTop: '1px solid rgba(0,242,255,0.2)', paddingTop: '20px' }}>
-          <h3 style={{ fontSize: '14px', textAlign: 'center' }}>MATCHES_FOUND</h3>
+          <h3 style={{ letterSpacing: '2px', fontSize: '14px', textAlign: 'center', marginBottom: '20px' }}>IDENTIFIED_MATCHES</h3>
           <div style={styles.resultGrid}>
             {matches.map((m, i) => (
               <div key={i} style={styles.card}>
-                <img src={m} width="100%" alt="match" style={{ borderRadius: '6px' }} />
-                <button 
-                  style={{ background: '#00f2ff', border: 'none', width: '100%', padding: '5px', marginTop: '10px', fontSize: '10px', fontWeight: 'bold' }} 
-                  onClick={() => window.open(m)}
-                >
-                  SAVE
+                <img src={m} width="100%" alt="match" style={{ height: '150px', objectFit: 'cover', borderRadius: '8px' }} />
+                <button style={styles.downloadBtn} onClick={() => downloadImage(m, i)}>
+                  DOWNLOAD_DATA
                 </button>
               </div>
             ))}
@@ -256,8 +285,12 @@ function SearchFace() {
       )}
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
+      
       <style>{`
-        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+        @keyframes scan {
+          0% { top: 0%; }
+          100% { top: 100%; }
+        }
       `}</style>
     </div>
   );
