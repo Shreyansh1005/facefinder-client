@@ -11,7 +11,7 @@ function SearchFace() {
   const canvasRef = useRef();
   const resultsRef = useRef();
 
-  // ---------------- STYLES (UNTOUCHED) ----------------
+  // ---------------- STYLES (Kept exactly as original) ----------------
   const styles = {
     container: {
       minHeight: "100vh",
@@ -99,11 +99,13 @@ function SearchFace() {
     await autoFindFace(img);
   };
 
-  // UNIFIED HANDLER: Works for both platforms
+  // UPDATED: Standardized for both Android and iOS Upload
   const handleImage = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // We use FileReader because iOS sometimes purges Blob URLs 
+    // when moving between the camera app and the browser.
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target.result;
@@ -186,9 +188,10 @@ function SearchFace() {
               ) : (
                 <>
                   <div style={{fontSize: '30px', marginBottom: '10px'}}>+</div>
-                  <div style={{fontSize: '10px', letterSpacing: '2px'}}>TAP TO CAPTURE IMAGE</div>
+                  <div style={{fontSize: '10px', letterSpacing: '2px'}}>TAP TO CAPTURE & UPLOAD</div>
                 </>
               )}
+              {/* capture="user" triggers the camera app directly on iOS */}
               <input type="file" accept="image/*" capture="user" onChange={handleImage} style={{display: 'none'}} />
             </label>
             <div style={{marginTop: '15px', fontSize: '10px', opacity: 0.5}}>[ {status} ]</div>
@@ -206,10 +209,29 @@ function SearchFace() {
           
           <div style={{ marginTop: '10px' }}>
             <label style={styles.btn}>
-               {platform === 'ios' ? "CHOOSE FROM GALLERY" : "MANUAL UPLOAD"}
-               <input type="file" accept="image/*" onChange={handleImage} style={{ display: 'none' }} />
+               {platform === 'ios' ? "CAPTURE DATA FILE" : "MANUAL UPLOAD"}
+               {/* Reference to Android: Using capture="user" for direct camera access */}
+               <input type="file" accept="image/*" capture="user" onChange={handleImage} style={{ display: 'none' }} />
             </label>
           </div>
+
+          {/* iOS only: Additional button for Gallery if they don't want to use the camera */}
+          {platform === 'ios' && (
+             <div style={{ marginTop: '10px' }}>
+                <label style={styles.btn}>
+                    SELECT FROM GALLERY
+                    <input type="file" accept="image/*" onChange={handleImage} style={{ display: 'none' }} />
+                </label>
+             </div>
+          )}
+
+          {/* Added Preview Thumb for iOS to match Android UX */}
+          {image && (
+            <div style={styles.previewThumb}>
+              <img src={image} width="100%" alt="subject" style={{ borderRadius: '4px', border: '1px solid #00f2ff' }} />
+              <div style={{ fontSize: '8px', marginTop: '5px', opacity: 0.7 }}>CAPTURED_IMG</div>
+            </div>
+          )}
         </div>
       </div>
 
