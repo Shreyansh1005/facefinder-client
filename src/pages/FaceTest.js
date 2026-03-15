@@ -295,6 +295,7 @@ function SearchFace() {
           <img
             src={image}
             width="150"
+            alt=""
           />
 
         </div>
@@ -318,6 +319,7 @@ function SearchFace() {
               <img
                 src={m}
                 width="200"
+                alt=""
               />
 
               <br />
