@@ -1,4 +1,4 @@
-import * as faceapi from "face-api.js";
+import * as faceapi from "face-api.js/dist/face-api.min.js";
 import { useEffect, useState, useRef } from "react";
 import "../futuristic.css";
 
@@ -123,7 +123,7 @@ function SearchFace() {
           
           {image && (
             <div className="preview-zone">
-              <img id="inputImg" src={image} crossOrigin="anonymous" className="preview-glow" />
+              <img id="inputImg" alt="result" src={image} crossOrigin="anonymous" className="preview-glow" />
               <button onClick={findFace} className="neonBtn scan-trigger">RUN BIOMETRIC MATCH</button>
             </div>
           )}
