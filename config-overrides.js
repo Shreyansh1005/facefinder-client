@@ -9,7 +9,15 @@ module.exports = function override(config) {
     stream: require.resolve("stream-browserify"),
     crypto: require.resolve("crypto-browserify"),
     assert: require.resolve("assert/"),
-    vm: require.resolve("vm-browserify")
+    vm: require.resolve("vm-browserify"),
+    process: require.resolve("process/browser"),
+    path: require.resolve("path-browserify"),
+    zlib: require.resolve("browserify-zlib")
+  };
+
+  config.resolve.alias = {
+    ...(config.resolve.alias || {}),
+    process: "process/browser"
   };
 
   config.plugins.push(
