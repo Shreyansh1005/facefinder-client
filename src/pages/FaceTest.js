@@ -5,7 +5,7 @@ function SearchFace() {
   const [image, setImage] = useState(null);
   const [matches, setMatches] = useState([]);
   const [status, setStatus] = useState("SYSTEM_READY");
-  const [platform, setPlatform] = useState(null); // 'ios' or 'android'
+  const [platform, setPlatform] = useState(null);
 
   const videoRef = useRef();
   const canvasRef = useRef();
@@ -15,7 +15,6 @@ function SearchFace() {
   const styles = {
     container: {
       minHeight: "100vh",
-      // minHeight: "-webkit-fill-available",
       background: "#05060f",
       padding: "calc(20px + env(safe-area-inset-top)) 15px env(safe-area-inset-bottom)",
       color: "#00f2ff",
@@ -26,8 +25,33 @@ function SearchFace() {
     selectionOverlay: {
       position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
       background: '#05060f', zIndex: 100, display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: '20px'
+      alignItems: 'center', justifyContent: 'center', gap: '20px', padding: '20px'
     },
+    header: { textAlign: "center", borderBottom: "1px solid rgba(0, 242, 255, 0.2)", paddingBottom: "10px", marginBottom: "20px" },
+    title: { fontSize: "1.2rem", margin: 0, fontWeight: "900", letterSpacing: "3px", textShadow: "0 0 10px rgba(0, 242, 255, 0.5)" },
+    layout: { display: "flex", flexDirection: window.innerWidth < 1024 ? "column" : "row", gap: "20px", alignItems: "center" },
+    sidebar: { width: "100%", maxWidth: "320px", background: "rgba(255, 255, 255, 0.03)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "20px", borderRadius: "15px" },
+    
+    // Unified Button Style
+    btn: { 
+      width: "100%", 
+      padding: "14px 0", // Vertical padding only
+      marginBottom: "12px", 
+      border: "1px solid #00f2ff", 
+      background: "transparent", 
+      color: "#00f2ff", 
+      cursor: "pointer", 
+      fontWeight: "bold", 
+      textTransform: "uppercase", 
+      letterSpacing: "1px", 
+      fontSize: "11px", 
+      borderRadius: "4px", 
+      WebkitAppearance: "none",
+      display: "block",
+      textAlign: "center",
+      boxSizing: "border-box" // Crucial for width sync
+    },
+    
     iosDropzone: {
       width: "100%", maxWidth: "400px", aspectRatio: "1/1",
       margin: "0 auto", border: "2px dashed #00f2ff55", borderRadius: "20px",
@@ -35,18 +59,11 @@ function SearchFace() {
       justifyContent: "center", background: "rgba(0, 242, 255, 0.03)",
       cursor: "pointer", position: "relative", overflow: "hidden"
     },
-    header: { textAlign: "center", borderBottom: "1px solid rgba(0, 242, 255, 0.2)", paddingBottom: "10px", marginBottom: "20px" },
-    title: { fontSize: "1.2rem", margin: 0, fontWeight: "900", letterSpacing: "3px", textShadow: "0 0 10px rgba(0, 242, 255, 0.5)" },
-    layout: { display: "flex", flexDirection: window.innerWidth < 1024 ? "column" : "row", gap: "20px", alignItems: "center" },
-    sidebar: { width: "100%", maxWidth: "320px", background: "rgba(255, 255, 255, 0.03)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "20px", borderRadius: "15px" },
-    btn: { width: "100%", padding: "12px", marginBottom: "12px", border: "1px solid #00f2ff", background: "transparent", color: "#00f2ff", cursor: "pointer", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", fontSize: "11px", borderRadius: "4px", WebkitAppearance: "none" },
-    scannerBox: { width: "100%", maxWidth: "480px", position: "relative", background: "linear-gradient(45deg, #00f2ff, #7000ff)", padding: "4px", borderRadius: "16px", margin: "0 auto", overflow: "hidden", WebkitMaskImage: "-webkit-radial-gradient(white, black)" },
-    hudStatus: { position: "absolute", top: "15px", left: "15px", zIndex: 10, background: "rgba(0, 0, 0, 0.75)", padding: "6px 12px", borderRadius: "4px", borderLeft: "3px solid #00f2ff", fontSize: "11px", fontWeight: "bold", fontFamily: "monospace", pointerEvents: "none", boxShadow: "0 4px 15px rgba(0,0,0,0.5)" },
-    video: { width: "100%", maxHeight: "300px", objectFit: "cover", borderRadius: "10px", display: "block", background: "#000", WebkitTransform: "translateZ(0)" },
-    previewThumb: { marginTop: "15px", padding: "8px", background: "rgba(0, 0, 0, 0.4)", borderRadius: "10px", border: "1px solid rgba(0, 242, 255, 0.2)", textAlign: "center", maxWidth: "100px", margin: "15px auto 0" },
+    scannerBox: { width: "100%", maxWidth: "480px", position: "relative", background: "linear-gradient(45deg, #00f2ff, #7000ff)", padding: "4px", borderRadius: "16px", margin: "0 auto", overflow: "hidden" },
+    hudStatus: { position: "absolute", top: "15px", left: "15px", zIndex: 10, background: "rgba(0, 0, 0, 0.75)", padding: "6px 12px", borderRadius: "4px", borderLeft: "3px solid #00f2ff", fontSize: "11px", fontWeight: "bold", fontFamily: "monospace" },
+    video: { width: "100%", maxHeight: "300px", objectFit: "cover", borderRadius: "10px", display: "block" },
     resultGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "20px", marginTop: "30px" },
-    card: { background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(0, 242, 255, 0.2)", borderRadius: "15px", padding: "12px", textAlign: "center" },
-    downloadBtn: { marginTop: "12px", width: "100%", padding: "10px", background: "linear-gradient(90deg, #00f2ff, #7000ff)", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "11px", WebkitAppearance: "none" }
+    card: { background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(0, 242, 255, 0.2)", borderRadius: "15px", padding: "12px", textAlign: "center" }
   };
 
   // ---------------- LOGIC ----------------
@@ -67,9 +84,6 @@ function SearchFace() {
         setStatus("SYSTEM_READY");
       }, 3000);
     }
-    if (status === "MATCH_FOUND" && resultsRef.current) {
-      resultsRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
     return () => clearTimeout(timer);
   }, [status]);
 
@@ -80,9 +94,7 @@ function SearchFace() {
       });
       videoRef.current.srcObject = stream;
       setStatus("LENS_ACTIVE");
-    } catch {
-      alert("Camera access failed.");
-    }
+    } catch { alert("Camera access failed."); }
   };
 
   const capture = async () => {
@@ -94,7 +106,7 @@ function SearchFace() {
     canvas.getContext("2d").drawImage(video, 0, 0);
     const img = canvas.toDataURL("image/png");
     setImage(img);
-    await autoFindFace(img);
+    autoFindFace(img);
   };
 
   const handleImage = (e) => {
@@ -111,11 +123,7 @@ function SearchFace() {
     img.src = imgSrc;
     img.onload = async () => {
       const detect = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
-      if (!detect) {
-        setStatus("NO_FACE");
-        setMatches([]);
-        return;
-      }
+      if (!detect) { setStatus("NO_FACE"); setMatches([]); return; }
       try {
         const res = await fetch("https://facefinder-server.onrender.com/api/photos");
         const photos = await res.json();
@@ -123,22 +131,10 @@ function SearchFace() {
           if (!p.descriptor) return false;
           return faceapi.euclideanDistance(detect.descriptor, new Float32Array(p.descriptor)) < 0.45;
         }).map(p => "https://facefinder-server.onrender.com/" + p.imagePath);
-
         setMatches(found);
         setStatus(found.length > 0 ? "MATCH_FOUND" : "NO_MATCH");
       } catch (err) { setStatus("SERVER_ERROR"); }
     };
-  };
-
-  const downloadImage = async (url, i) => {
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `match_${i + 1}.jpg`;
-      link.click();
-    } catch { window.open(url); }
   };
 
   // ---------------- RENDER ----------------
@@ -146,9 +142,9 @@ function SearchFace() {
   if (!platform) {
     return (
       <div style={styles.selectionOverlay}>
-        <div style={{color: '#00f2ff', letterSpacing: '4px', fontSize: '12px', marginBottom: '10px'}}>SELECT ARCHITECTURE</div>
-        <button style={{...styles.btn, maxWidth: '250px'}} onClick={() => setPlatform('android')}>DROID_OS TERMINAL</button>
-        <button style={{...styles.btn, maxWidth: '250px'}} onClick={() => setPlatform('ios')}>APPLE_CORE PORTAL</button>
+        <div style={{color: '#00f2ff', letterSpacing: '4px', fontSize: '12px', marginBottom: '20px'}}>HARDWARE DETECTION</div>
+        <button style={{...styles.btn, maxWidth: '280px'}} onClick={() => setPlatform('android')}>ANDROID DEVICE</button>
+        <button style={{...styles.btn, maxWidth: '280px'}} onClick={() => setPlatform('ios')}>IPHONE / IOS DEVICE</button>
       </div>
     );
   }
@@ -161,7 +157,6 @@ function SearchFace() {
 
       <div style={styles.layout}>
         {platform === 'android' ? (
-          /* ANDROID VIEW: Live Camera Scanning */
           <div style={styles.scannerBox}>
             <div style={styles.hudStatus}>
                <span style={{ color: status === "MATCH_FOUND" || status === "LENS_ACTIVE" ? "#00ff88" : "#ff3e3e", marginRight: '8px' }}>●</span>
@@ -173,7 +168,6 @@ function SearchFace() {
             </div>
           </div>
         ) : (
-          /* IOS VIEW: Clean, futuristic upload zone */
           <div style={{width: '100%', textAlign: 'center'}}>
             <label style={styles.iosDropzone}>
               {image ? (
@@ -181,7 +175,7 @@ function SearchFace() {
               ) : (
                 <>
                   <div style={{fontSize: '30px', marginBottom: '10px'}}>+</div>
-                  <div style={{fontSize: '10px', letterSpacing: '2px'}}>INITIALIZE BIOMETRIC UPLOAD</div>
+                  <div style={{fontSize: '10px', letterSpacing: '2px'}}>TAP TO TAKE PHOTO</div>
                 </>
               )}
               <input type="file" accept="image/*" onChange={handleImage} style={{display: 'none'}} />
@@ -191,7 +185,8 @@ function SearchFace() {
         )}
 
         <div style={styles.sidebar}>
-          <div style={{ marginBottom: '15px', fontSize: '10px', opacity: 0.5, letterSpacing: '1px' }}>SYSTEM_CONTROLS</div>
+          <div style={{ marginBottom: '15px', fontSize: '10px', opacity: 0.5, letterSpacing: '1px' }}>CONTROLS</div>
+          
           {platform === 'android' && (
             <>
               <button onClick={startCamera} style={styles.btn}>ACTIVATE LENS</button>
@@ -199,17 +194,15 @@ function SearchFace() {
             </>
           )}
           
-          <div style={{ marginTop: '10px' }}>
-            <label style={{...styles.btn, display: 'block', textAlign: 'center'}}>
-               {platform === 'ios' ? "SELECT DATA FILE" : "MANUAL UPLOAD"}
-               <input type="file" onChange={handleImage} style={{ display: 'none' }} />
-            </label>
-          </div>
+          {/* Sync'd Upload Button */}
+          <label style={styles.btn}>
+             {platform === 'ios' ? "CHOOSE FROM GALLERY" : "UPLOAD IMAGE"}
+             <input type="file" onChange={handleImage} style={{ display: 'none' }} />
+          </label>
 
-          {image && platform === 'android' && (
-            <div style={styles.previewThumb}>
-              <img src={image} width="100%" alt="subject" style={{ borderRadius: '4px', border: '1px solid #00f2ff' }} />
-              <div style={{ fontSize: '8px', marginTop: '5px', opacity: 0.7 }}>CAPTURED_IMG</div>
+          {image && (
+            <div style={{ marginTop: "15px", textAlign: "center" }}>
+              <img src={image} width="80px" alt="subject" style={{ borderRadius: '4px', border: '1px solid #00f2ff' }} />
             </div>
           )}
         </div>
@@ -217,13 +210,12 @@ function SearchFace() {
 
       {matches.length > 0 && (
         <div ref={resultsRef} style={{ marginTop: '50px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px' }}>
-          <h3 style={{ letterSpacing: '4px', fontSize: '16px', textAlign: 'center', marginBottom: '30px' }}>IDENTIFIED_MATCHES</h3>
+          <h3 style={{ letterSpacing: '4px', fontSize: '14px', textAlign: 'center', marginBottom: '30px' }}>IDENTIFIED_MATCHES</h3>
           <div style={styles.resultGrid}>
             {matches.map((m, i) => (
               <div key={i} style={styles.card}>
-                <div style={{ fontSize: '10px', textAlign: 'left', marginBottom: '8px', opacity: 0.4 }}>REF_0{i + 1}</div>
                 <img src={m} width="100%" alt="match" style={{ height: '180px', objectFit: 'cover', borderRadius: '10px' }} />
-                <button style={styles.downloadBtn} onClick={() => downloadImage(m, i)}>DOWNLOAD_DATA</button>
+                <button style={{...styles.btn, marginTop: '12px', background: '#00f2ff', color: '#000'}} onClick={() => window.open(m)}>DOWNLOAD</button>
               </div>
             ))}
           </div>
