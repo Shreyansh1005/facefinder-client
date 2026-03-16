@@ -129,10 +129,18 @@ function SearchFace() {
       try {
         const res = await fetch("https://facefinder-server-1.onrender.com/api/photos");
         const photos = await res.json();
-        const found = photos.filter(p => {
-          if (!p.descriptor) return false;
-          return faceapi.euclideanDistance(detect.descriptor, new Float32Array(p.descriptor)) < 0.45;
-        }).map(p => "https://facefinder-server-1.onrender.com/" + p.imageUrl);
+        const found = photos
+  .filter(p => {
+
+    if (!p.descriptor) return false;
+
+    return faceapi.euclideanDistance(
+      detect.descriptor,
+      new Float32Array(p.descriptor)
+    ) < 0.45;
+
+  })
+  .map(p => p.imageUrl);
 
         setMatches(found);
         setStatus(found.length > 0 ? "MATCH_FOUND" : "NO_MATCH");
