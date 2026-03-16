@@ -127,12 +127,12 @@ function SearchFace() {
         return;
       }
       try {
-        const res = await fetch("https://facefinder-server.onrender.com/api/photos");
+        const res = await fetch("https://facefinder-server-1.onrender.com/api/photos");
         const photos = await res.json();
         const found = photos.filter(p => {
           if (!p.descriptor) return false;
           return faceapi.euclideanDistance(detect.descriptor, new Float32Array(p.descriptor)) < 0.45;
-        }).map(p => "https://facefinder-server.onrender.com/" + p.imagePath);
+        }).map(p => "https://facefinder-server-1.onrender.com/" + p.imageUrl);
 
         setMatches(found);
         setStatus(found.length > 0 ? "MATCH_FOUND" : "NO_MATCH");

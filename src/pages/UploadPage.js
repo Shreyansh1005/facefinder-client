@@ -136,7 +136,7 @@ function UploadPage() {
         formData.append("descriptor", JSON.stringify(Array.from(detections.descriptor)));
 
         try {
-          await fetch("https://facefinder-server.onrender.com/api/upload", {
+          await fetch("https://facefinder-server-1.onrender.com/api/upload", {
             method: "POST",
             body: formData,
           });
