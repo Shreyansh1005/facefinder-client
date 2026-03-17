@@ -125,12 +125,48 @@ function UploadPage() {
   let successCount = 0;
 
   for (let i = 0; i < files.length; i++) {
+
     setProgress({ current: i + 1, total: files.length });
 
-    const formData = new FormData();
-    formData.append("image", files[i]);
+    let descriptor = null;
 
     try {
+
+      const img = await faceapi.bufferToImage(files[i]);
+
+      const detection = await faceapi
+        .detectSingleFace(
+          img,
+          new faceapi.TinyFaceDetectorOptions({
+            inputSize: 512,
+            scoreThreshold: 0.2,
+          })
+        )
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (detection) {
+        descriptor =
+          Array.from(detection.descriptor);
+      }
+
+    } catch (e) {
+      console.log("Detection failed");
+    }
+
+    const formData = new FormData();
+
+    formData.append("image", files[i]);
+
+    if (descriptor) {
+      formData.append(
+        "descriptor",
+        JSON.stringify(descriptor)
+      );
+    }
+
+    try {
+
       await fetch(
         "https://facefinder-server-1.onrender.com/api/upload",
         {
@@ -142,8 +178,9 @@ function UploadPage() {
       successCount++;
 
     } catch (e) {
-      console.error("Upload error", e);
+      console.log("Upload error");
     }
+
   }
 
   setStatus("UPLOAD_COMPLETE");
