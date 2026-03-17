@@ -132,14 +132,24 @@ function SearchFace() {
         const found = photos
   .filter(p => {
 
-    if (!p.descriptor) return false;
+  if (!p.descriptor) return false;
+
+  if (p.descriptor.length !== 128) return false;
+
+  try {
 
     return faceapi.euclideanDistance(
       detect.descriptor,
       new Float32Array(p.descriptor)
     ) < 0.45;
 
-  })
+  } catch {
+
+    return false;
+
+  }
+
+})
   .map(p => p.imageUrl);
 
         setMatches(found);
