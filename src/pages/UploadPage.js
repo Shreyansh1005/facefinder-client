@@ -1,4 +1,4 @@
-// import * as faceapi from "face-api.js";
+import * as faceapi from "face-api.js";
 import { useEffect, useState } from "react";
 
 function UploadPage() {
@@ -99,18 +99,18 @@ function UploadPage() {
     }
   };
 
-  // useEffect(() => {
-  //   const loadModels = async () => {
-  //     await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
-  //     await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
-  //     await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
-  //     setStatus("SYSTEM_READY");
-  //   };
-  //   loadModels();
-  // }, []);
   useEffect(() => {
-  setStatus("SYSTEM_READY");
-}, []);
+    const loadModels = async () => {
+      await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+      await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
+      await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
+      setStatus("SYSTEM_READY");
+    };
+    loadModels();
+  }, []);
+//   useEffect(() => {
+//   setStatus("SYSTEM_READY");
+// }, []);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
