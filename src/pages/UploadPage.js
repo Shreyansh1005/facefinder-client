@@ -99,15 +99,18 @@ function UploadPage() {
     }
   };
 
+  // useEffect(() => {
+  //   const loadModels = async () => {
+  //     await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+  //     await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
+  //     await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
+  //     setStatus("SYSTEM_READY");
+  //   };
+  //   loadModels();
+  // }, []);
   useEffect(() => {
-    const loadModels = async () => {
-      await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
-      await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
-      await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
-      setStatus("SYSTEM_READY");
-    };
-    loadModels();
-  }, []);
+  setStatus("SYSTEM_READY");
+}, []);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -118,35 +121,37 @@ function UploadPage() {
   };
 
   const uploadBatch = async () => {
-    setStatus("UPLOADING...");
-    let successCount = 0;
+  setStatus("UPLOADING...");
+  let successCount = 0;
 
-    for (let i = 0; i < files.length; i++) {
-      setProgress({ current: i + 1, total: files.length });
-      
-      const img = await faceapi.bufferToImage(files[i]);
-      const detections = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+  for (let i = 0; i < files.length; i++) {
+    setProgress({ current: i + 1, total: files.length });
 
-      if (detections) {
-        const formData = new FormData();
-        formData.append("image", files[i]);
-        formData.append("descriptor", JSON.stringify(Array.from(detections.descriptor)));
+    const formData = new FormData();
+    formData.append("image", files[i]);
 
-        try {
-          await fetch("https://facefinder-server-1.onrender.com/api/upload", {
-            method: "POST",
-            body: formData,
-          });
-          successCount++;
-        } catch (e) { console.error("Upload error", e); }
-      }
+    try {
+      await fetch(
+        "https://facefinder-server-1.onrender.com/api/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      successCount++;
+
+    } catch (e) {
+      console.error("Upload error", e);
     }
-    setStatus("UPLOAD_COMPLETE");
-    alert(`Protocol finished. ${successCount} entries committed to database.`);
-  };
+  }
+
+  setStatus("UPLOAD_COMPLETE");
+
+  alert(
+    `Protocol finished. ${successCount} entries committed to database.`
+  );
+};
 
   return (
     <div style={styles.container}>
